@@ -47,6 +47,29 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
     def user_get_experience(msisdn_hash: str, window_min: int = 120) -> dict[str, Any]:
         return run(lambda conn: tools.get_experience(conn, msisdn_hash, window_min))
 
+    @mcp.tool(
+        description="Subscribers whose serving tower is inside a circle (lat, lng, radius_km 0.1-100) right now: "
+        "towers with sampled and estimated counts, and subscriber rows (msisdn_hash, cell, attached, latest "
+        "experience label). The subscribers are a SYNTHETIC SAMPLE; use subscribers_est for population size. "
+        "Fewer than 5 matches are withheld."
+    )
+    def user_list_in_area(lat: float, lng: float, radius_km: float, limit: int = 200) -> dict[str, Any]:
+        return run(lambda conn: tools.list_in_area(conn, lat, lng, radius_km, limit))
+
+    @mcp.tool(
+        description="Subscribers on one tower right now (sampled, with the tower's estimated population), each with "
+        "attach state and latest experience label. Fewer than 5 are withheld."
+    )
+    def user_list_on_tower(enodeb_name: str, limit: int = 200) -> dict[str, Any]:
+        return run(lambda conn: tools.list_on_tower(conn, enodeb_name, limit))
+
+    @mcp.tool(
+        description="The cells one subscriber has been on over the last window_min minutes (5-2880), oldest first, "
+        "with arrival and leave times. Cell level only. Get the msisdn_hash from a ticket or a subscriber list."
+    )
+    def user_get_trail(msisdn_hash: str, window_min: int = 1440) -> dict[str, Any]:
+        return run(lambda conn: tools.get_trail(conn, msisdn_hash, window_min))
+
     return mcp
 
 

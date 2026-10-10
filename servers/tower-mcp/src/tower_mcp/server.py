@@ -58,6 +58,15 @@ def build_server(open_source: SourceFactory, *, host: str = "127.0.0.1", port: i
     ) -> dict[str, Any]:
         return run(lambda source: tools.list_in_bbox(source, min_lat, min_lng, max_lat, max_lng, status, limit))
 
+    @mcp.tool(
+        description="List towers within radius_km (0.1 to 200) of a lat/lng point, nearest first, each with its "
+        "distance_km and status. Use it for 'what towers are around here'. status filter: UP, DEGRADED, DOWN or UNKNOWN."
+    )
+    def tower_list_in_radius(
+        lat: float, lng: float, radius_km: float, status: str | None = None, limit: int = 500
+    ) -> dict[str, Any]:
+        return run(lambda source: tools.list_in_radius(source, lat, lng, radius_km, status, limit))
+
     @mcp.tool(description="KPI samples (PRB utilisation %, drop rate %, throughput Mbps) over the last window_min minutes.")
     def tower_get_kpi(enodeb_name: str, window_min: int = 60) -> dict[str, Any]:
         return run(lambda source: tools.get_kpi(source, enodeb_name, window_min))

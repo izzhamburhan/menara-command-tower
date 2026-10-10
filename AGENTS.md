@@ -70,6 +70,7 @@ Use `python -m ...`, not console scripts; some Windows machines block `.venv` `.
 
 1. Each MCP is a separate server depending only on `menara-core`. No MCP calls another.
 2. Read the shared SQLite file; write only tables you own (`menara_core.db.connect(path, owned_tables=...)`). Cross-domain reads of tables another domain owns are read-only and limited: `ontology-mcp`, `twin-mcp` and `policy-mcp` read base tables to compute impact themselves; `ran-mcp` reads `cell` and `tower`; `drone-mcp` reads `tower`; `tower-mcp` and `ontology-mcp` apply `ran_kpi_effect` through `menara_core.kpi_overlay`. Each server's README says what it reads.
+2. Read the shared SQLite file; write only tables you own (`menara_core.db.connect(path, owned_tables=...)`). Cross-domain reads of tables another domain owns are read-only and limited: `ontology-mcp`, `twin-mcp` and `policy-mcp` read base tables to compute impact themselves; `ran-mcp` reads `cell` and `tower`; `drone-mcp` reads `tower`; `user-mcp` reads `tower_subscribers` for the population estimate; `tower-mcp` and `ontology-mcp` apply `ran_kpi_effect` through `menara_core.kpi_overlay`. Each server's README says what it reads.
 3. Every tool returns the `Envelope` (`synthetic: true`, `evidence[]`).
 4. Tool names are prefixed by domain, e.g. `tower_get_status`.
 5. Tests first; ruff and mypy strict must pass. Logic in `tools.py`, registration in `server.py`.

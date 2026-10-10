@@ -10,6 +10,7 @@ from menara_core.scenario import Scenario
 from menara_core.seed import towers as gen
 from menara_core.seed.actions import build_actions
 from menara_core.seed.context import build_context
+from menara_core.seed.movement import build_movement
 from menara_core.seed.people import build_people
 from menara_core.seed.schema import SCHEMA
 from menara_core.seed.sites import build_sites
@@ -142,12 +143,13 @@ def build(
         build_context(conn, rng, scenario, everything)
         build_sites(conn, rng, scenario, everything)
         build_actions(conn, rng, scenario, everything)
+        build_movement(conn, seed, scenario)  # last, with its own random stream, so older tables are unchanged
         conn.commit()
         counts = {
             table: int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
             for table in (
                 "tower", "cell", "tower_neighbour", "tower_state", "tower_kpi", "tower_alarm",
-                "subscriber", "subscriber_state", "subscriber_experience", "ticket",
+                "subscriber", "subscriber_state", "subscriber_experience", "subscriber_cell_visit", "ticket",
                 "weather_station", "weather_obs", "grid_feeder", "grid_feeder_tower", "grid_feeder_state",
                 "flood_gauge", "flood_reading", "flood_extent", "critical_site", "tower_subscribers",
                 "policy_setting", "ran_script", "drone", "drone_finding",

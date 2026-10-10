@@ -72,6 +72,23 @@ class TowerList(BaseModel):
     truncated: bool
 
 
+class Centre(BaseModel):
+    lat: float
+    lng: float
+
+
+class TowerNearby(TowerPin):
+    distance_km: float
+
+
+class TowerRadiusList(BaseModel):
+    center: Centre
+    radius_km: float
+    towers: list[TowerNearby]
+    returned: int
+    truncated: bool
+
+
 class KpiSummary(BaseModel):
     samples: int
     avg_prb_util: float | None

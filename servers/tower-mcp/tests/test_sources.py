@@ -129,6 +129,14 @@ def test_alarms_are_the_same_on_both_sources(any_source: TowerSource) -> None:
     ]
 
 
+def test_radius_is_the_same_on_both_sources(any_source: TowerSource) -> None:
+    around = tools.list_in_radius(any_source, 5.531, 102.197, radius_km=20).data
+    assert around.towers[0].enodeb_name == "KKRI-0142" and len(around.towers) >= 6
+    assert [t.enodeb_name for t in tools.list_in_radius(any_source, 5.531, 102.197, 20, status="DOWN").data.towers] == [
+        "KKRI-0142"
+    ]
+
+
 def test_errors_are_the_same_on_both_sources(any_source: TowerSource) -> None:
     with pytest.raises(NotFoundError):
         tools.get_status(any_source, "ZZZZ-9999")
