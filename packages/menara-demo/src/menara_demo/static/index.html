@@ -51,6 +51,18 @@
   textarea { width: 100%; min-height: 90px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
   select { max-width: 100%; }
   @media (max-width: 900px) { main { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; } aside { border-left: 0; border-top: 1px solid var(--line); } }
+  .step { padding: 6px 10px; }
+  .step.ok { border-left: 4px solid var(--up); }
+  .step.bad { border-left: 4px solid var(--down); }
+  .step .name { font-weight: 600; }
+  .step .args { color: var(--muted); font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-word; }
+  .step details pre { max-height: 220px; margin: 4px 0 0; }
+  .step summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+  .say { font-size: 13px; margin: 4px 2px 8px; padding-left: 8px; border-left: 3px solid var(--accent); }
+  .final { white-space: pre-wrap; }
+  .decide { display: flex; gap: 8px; margin-top: 6px; }
+  .story { white-space: pre-wrap; }
+  textarea.task { min-height: 70px; font-family: inherit; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -72,6 +84,7 @@
   <aside>
     <div class="tabs">
       <button id="tabArea" class="on">Map &amp; area</button>
+      <button id="tabStory">Story</button>
       <button id="tabConsole">Console</button>
     </div>
     <section id="paneArea" class="pane on">
@@ -83,6 +96,23 @@
       <div class="row small muted">Click the map to circle a place. Radius <input id="radius" type="range" min="1" max="50" value="15" style="width: 9em"> <b id="radiusLabel">15</b> km</div>
       <div id="areaMsg" class="box muted">Loading...</div>
       <div id="areaOut"></div>
+    </section>
+    <section id="paneStory" class="pane">
+      <div class="small muted" style="margin-bottom: 6px">Watch an agent work the flood incident through the real MCP servers. <b>Run live</b> lets DeepSeek decide each step. <b>Replay</b> follows a fixed script (no key needed). When policy needs a human, Approve or Reject appears in the timeline. Every run changes the demo data; re-seed for a clean start.</div>
+      <div class="row">
+        <button data-preset="full">Full incident</button>
+        <button data-preset="investigate">Investigate only</button>
+        <button data-preset="fix">Fix and verify</button>
+      </div>
+      <textarea id="storyTask" class="task" spellcheck="false" aria-label="Task for the agent"></textarea>
+      <div class="row" style="margin-top: 6px">
+        <span class="muted small">Start at minute</span> <input id="storyClock" type="number" min="-1440" max="720" value="12" style="width: 5em" aria-label="Start minute">
+        <button id="runLive" class="primary">Run live</button>
+        <button id="runReplay">Replay (no key)</button>
+        <button id="cancelRun" disabled>Cancel</button>
+      </div>
+      <div id="storyStatus" class="small muted" style="margin: 4px 0 8px"></div>
+      <div id="timeline"></div>
     </section>
     <section id="paneConsole" class="pane">
       <div class="small muted" style="margin-bottom: 6px">Run any tool and see the raw response. The four human-only approval tools are not offered.</div>
@@ -254,6 +284,7 @@ async function showTrail(hash) {
       el("div", { class: "small muted" }, trail.moves + " moves · " + trail.distinct_towers + " towers · last 24 h from " + when(trail.window_start) + " (cell level only)"),
       el("table", {}, el("tr", {}, ["#", "Tower", "From", "To", "Min"].map((h) => el("th", {}, h))),
         trail.segments.map((s, i) => el("tr", {}, el("td", {}, i + 1), el("td", {}, s.enodeb_name), el("td", {}, when(s.arrived_at)), el("td", {}, s.left_at ? when(s.left_at) : "now"), el("td", {}, s.duration_min)))));
+    target.append(el("button", { onclick: () => explainTrail(hash) }, "Explain this trail (LLM)"), el("div", { id: "storyOut" }));
     drawTrail(trail.segments);
     target.scrollIntoView({ block: "nearest" });
   } catch (error) {
@@ -304,9 +335,16 @@ $("#radius").oninput = (event) => {
 function tab(which) {
   $("#tabArea").classList.toggle("on", which === "area"); $("#tabConsole").classList.toggle("on", which === "console");
   $("#paneArea").classList.toggle("on", which === "area"); $("#paneConsole").classList.toggle("on", which === "console");
+  for (const name of ["area", "story", "console"]) {
+    const cap = name[0].toUpperCase() + name.slice(1);
+    $("#tab" + cap).classList.toggle("on", which === name);
+    $("#pane" + cap).classList.toggle("on", which === name);
+  }
   if (which === "console" && !tools.length) loadTools();
+  if (which === "story") storyStatus().then(resumeRun);
 }
 $("#tabArea").onclick = () => tab("area");
+$("#tabStory").onclick = () => tab("story");
 $("#tabConsole").onclick = () => tab("console");
 
 let tools = [];
@@ -362,6 +400,116 @@ $("#runTool").onclick = async () => {
   }
 };
 
+// ---------- story: a live or replayed agent run ----------
+const PRESETS = {
+  full: "Support ticket TK-88213 just arrived. Find the cause and the blast radius, record an Incident, request a drone inspection of the failed tower and report what it finds. Then relieve the overloaded neighbour towers with a tilt: simulate first, apply it through policy, verify with KPIs, and roll back if it does not help.",
+  investigate: "Ticket TK-88213 just arrived. Find the cause and blast radius, and record an Incident.",
+  fix: "Incident INC-0001 is open. The neighbours of KKRI-0142 are overloaded. Simulate a tilt first, then apply it through policy, check whether it helped using tower KPIs, and roll back if it did not.",
+};
+const run = { since: 0, timer: null, cards: {}, live: false };
+$("#storyTask").value = PRESETS.full;
+document.querySelectorAll("[data-preset]").forEach((button) => (button.onclick = () => ($("#storyTask").value = PRESETS[button.dataset.preset])));
+
+async function storyStatus() {
+  const status = await (await fetch("/api/agent/status")).json();
+  run.live = status.live_available;
+  $("#runLive").disabled = !status.live_available || status.running;
+  $("#runReplay").disabled = status.running;
+  $("#cancelRun").disabled = !status.running;
+  $("#runLive").title = status.live_available ? "Model: " + status.model : "No DEEPSEEK_API_KEY in .env; restart the demo after adding it";
+  if (!status.live_available) $("#storyStatus").textContent = "Live is off: no DEEPSEEK_API_KEY in .env. Replay still works.";
+  return status;
+}
+
+async function startRun(mode) {
+  const response = await fetch("/api/agent/run", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode, task: $("#storyTask").value, clock: Number($("#storyClock").value) }) });
+  const reply = await response.json();
+  if (!response.ok) { $("#storyStatus").textContent = reply.error; return; }
+  run.since = 0; run.cards = {};
+  $("#timeline").replaceChildren();
+  $("#storyStatus").textContent = (mode === "live" ? "Live run" : "Replay") + " started...";
+  $("#runLive").disabled = $("#runReplay").disabled = true; $("#cancelRun").disabled = false;
+  clearInterval(run.timer);
+  run.timer = setInterval(pollRun, 700);
+  pollRun();
+}
+
+async function pollRun() {
+  const state = await (await fetch("/api/agent/events?since=" + run.since)).json();
+  for (const event of state.events) renderEvent(event);
+  run.since = state.next;
+  if (state.events.length) { loadClock(); const pane = $("#paneStory"); pane.scrollTop = pane.scrollHeight; }
+  $("#storyStatus").textContent = state.pending_approval ? "Waiting for your decision..." : state.status === "running" ? "Running..." : "Finished: " + state.status;
+  if (state.status !== "running") {
+    clearInterval(run.timer);
+    $("#runLive").disabled = !run.live; $("#runReplay").disabled = false; $("#cancelRun").disabled = true;
+    loadClock(); loadTowers();
+  }
+}
+
+async function resumeRun() {
+  if ($("#timeline").childElementCount) return;  // already showing a run
+  const state = await (await fetch("/api/agent/events?since=0")).json();
+  if (!state.run_id) return;
+  run.cards = {};
+  for (const event of state.events) renderEvent(event);
+  run.since = state.next;
+  if (state.status === "running") { $("#runLive").disabled = $("#runReplay").disabled = true; $("#cancelRun").disabled = false; clearInterval(run.timer); run.timer = setInterval(pollRun, 700); }
+  else $("#storyStatus").textContent = "Last run: " + state.status;
+}
+
+function shorten(text, n) { return text.length > n ? text.slice(0, n) + "…" : text; }
+function pretty(text) { try { return JSON.stringify(JSON.parse(text), null, 2); } catch (error) { return text; } }
+
+function renderEvent(event) {
+  const line = $("#timeline");
+  if (event.type === "say") {
+    line.append(el("div", { class: "say" }, event.text));
+  } else if (event.type === "call") {
+    const result = el("div", { class: "small muted" }, "running...");
+    const card = el("div", { class: "box step" }, el("div", { class: "name" }, "#" + event.step + " " + event.name), el("div", { class: "args" }, shorten(JSON.stringify(event.arguments), 300)), result);
+    run.cards[event.step] = { card, result };
+    line.append(card);
+  } else if (event.type === "result") {
+    const entry = run.cards[event.step];
+    if (!entry) return;
+    entry.card.classList.add(event.ok ? "ok" : "bad");
+    entry.result.replaceChildren(el("details", {}, el("summary", {}, (event.ok ? "result: " : "error: ") + shorten(event.text.replace(/\s+/g, " "), 110)), el("pre", {}, pretty(event.text))));
+  } else if (event.type === "approval") {
+    const approve = el("button", { class: "primary" }, "Approve");
+    const reject = el("button", {}, "Reject");
+    const decide = async (yes) => {
+      approve.disabled = reject.disabled = true;
+      await fetch("/api/agent/decision", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ approve: yes }) });
+    };
+    approve.onclick = () => decide(true); reject.onclick = () => decide(false);
+    line.append(el("div", { class: "box warn" }, el("b", {}, "Human approval needed"), el("div", { class: "small" }, event.summary), el("div", { class: "decide" }, approve, reject)));
+  } else if (event.type === "decision") {
+    line.append(el("div", { class: "small muted", style: "margin: 0 0 8px 4px" }, event.cancelled ? "Cancelled: rejected." : "You " + (event.approved ? "approved." : "rejected.")));
+  } else if (event.type === "final") {
+    line.append(el("div", { class: "box " + (event.status === "error" ? "err" : "") }, el("b", {}, event.status === "done" ? "Final answer" : "Run " + event.status), el("div", { class: "final" }, event.text)));
+  }
+}
+
+$("#runLive").onclick = () => startRun("live");
+$("#runReplay").onclick = () => startRun("replay");
+$("#cancelRun").onclick = () => fetch("/api/agent/cancel", { method: "POST" });
+
+async function explainTrail(hash) {
+  const out = $("#storyOut");
+  out.replaceChildren(el("div", { class: "muted small", style: "margin-top: 6px" }, "Asking the model, using the places near each tower..."));
+  try {
+    const response = await fetch("/api/trail/story", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ msisdn_hash: hash }) });
+    const reply = await response.json();
+    if (!response.ok) throw new Error(reply.error);
+    const sites = reply.facts.towers.map((t) => t.tower + ": " + (t.nearby_sites.length ? t.nearby_sites.map((s) => s.name + " (" + s.kind.toLowerCase() + ", " + s.distance_km + " km)").join("; ") : "no known site nearby")).join("\n");
+    out.replaceChildren(el("h2", {}, "Story (model: " + reply.model + ")"), el("div", { class: "box story" }, reply.story),
+      el("details", { class: "small" }, el("summary", { class: "muted" }, "Facts the story is built from"), el("pre", {}, sites + "\n\nLocations are cell level; the places are synthetic.")));
+  } catch (error) {
+    out.replaceChildren(el("div", { class: "box err small", style: "margin-top: 6px" }, error.message));
+  }
+}
+
 // ---------- start ----------
 (async function start() {
   setupMap();
@@ -379,6 +527,7 @@ $("#runTool").onclick = async () => {
       if (mover) mover.click();
     }
     if (scene === "console") tab("console");
+    if (scene === "story") tab("story");
   } catch (error) {
     message("Could not reach the servers: " + error.message, "err");
   }

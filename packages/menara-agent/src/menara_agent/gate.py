@@ -7,8 +7,9 @@ policy_approve or policy_reject with the approver key.
 
 from __future__ import annotations
 
+import inspect
 import json
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -20,7 +21,7 @@ TOKEN_SIMILARITY = 0.9
 
 
 class GatedRunner:
-    def __init__(self, inner: ToolRunner, approver_key: str, ask_human: Callable[[str], bool]) -> None:
+    def __init__(self, inner: ToolRunner, approver_key: str, ask_human: Callable[[str], bool | Awaitable[bool]]) -> None:
         self._inner = inner
         self._approver_key = approver_key
         self._ask_human = ask_human
@@ -59,7 +60,9 @@ class GatedRunner:
             f"Approval {approval_id}: {arguments.get('action')} on {arguments.get('targets')} "
             f"(confidence {arguments.get('confidence')}). Policy says: {data.get('reason')}"
         )
-        if not self._ask_human(summary):
+        answer = self._ask_human(summary)
+        said_yes = await answer if inspect.isawaitable(answer) else answer
+        if not said_yes:
             await self._inner.call(
                 "policy_reject",
                 {"approval_id": approval_id, "approver": HUMAN, "approver_key": self._approver_key},
