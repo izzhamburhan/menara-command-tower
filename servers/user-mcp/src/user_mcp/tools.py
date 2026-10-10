@@ -169,6 +169,16 @@ def _latest_label(conn: sqlite3.Connection, digest: str, now: int) -> Experience
     return label_for(row["score"], row["throughput_mbps"]) if row else None
 
 
+def _cell_changes_24h(conn: sqlite3.Connection, digest: str, now: int) -> int:
+    """Cell changes in the 24 hours up to now. The subscriber's first-ever visit is where they started, not a change."""
+    row = conn.execute(
+        "SELECT COUNT(*) FROM subscriber_cell_visit WHERE msisdn_hash = :h AND start_min <= :now "
+        "AND start_min > :since AND start_min > (SELECT MIN(start_min) FROM subscriber_cell_visit WHERE msisdn_hash = :h)",
+        {"h": digest, "now": now, "since": now - 1440},
+    ).fetchone()
+    return int(row[0])
+
+
 def _subscriber_list(
     conn: sqlite3.Connection,
     rows: list[sqlite3.Row],
@@ -191,6 +201,7 @@ def _subscriber_list(
             towers=[],
             subscribers=[],
             subscribers_total=None,
+            subscribers_est_total=None,
             returned=0,
             truncated=False,
             withheld=True,
@@ -221,11 +232,14 @@ def _subscriber_list(
             cell_lng=r["cell_lng"],
             attached=_attached(conn, r["msisdn_hash"], now),
             latest_label=_latest_label(conn, r["msisdn_hash"], now),
+            cell_changes_24h=_cell_changes_24h(conn, r["msisdn_hash"], now),
         )
         for r in rows[:limit]
     ]
     truncated = total > limit
     warnings = [f"Showing {limit} of {total} sampled subscribers; counts per tower cover all of them"] if truncated else []
+    if any(t.subscribers_est is None for t in towers):
+        warnings.append("Some towers have no population estimate; subscribers_est_total counts them as 0")
     data = SubscriberList(
         center=center,
         radius_km=radius_km,
@@ -233,6 +247,7 @@ def _subscriber_list(
         towers=towers,
         subscribers=shown,
         subscribers_total=total,
+        subscribers_est_total=sum(t.subscribers_est or 0 for t in towers),
         returned=len(shown),
         truncated=truncated,
         withheld=False,
@@ -312,6 +327,7 @@ def get_trail(conn: sqlite3.Connection, msisdn_hash: str, window_min: int = 1440
     data = Trail(
         msisdn_hash=sub["msisdn_hash"],
         window_min=window_min,
+        window_start=clock.iso_at(conn, window_start),
         segments=segments,
         moves=max(0, len(segments) - 1),
         distinct_towers=len({s.enodeb_name for s in segments}),
