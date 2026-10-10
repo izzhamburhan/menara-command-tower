@@ -1,6 +1,7 @@
 """Run one Menara MCP server (or all of them) so you can poke at it.
 
 Usage:
+    uv run python scripts/run_mcp.py                      # no name: shows the list and asks which one
     uv run python scripts/run_mcp.py list                 # names and ports
     uv run python scripts/run_mcp.py tower                # tower-mcp over streamable HTTP on its port
     uv run python scripts/run_mcp.py tower --stdio        # over stdio (for an MCP client that launches it)
@@ -16,6 +17,7 @@ here without any change. The HTTP endpoint is http://127.0.0.1:<port>/mcp; open 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import re
 import subprocess
 import sys
@@ -62,14 +64,34 @@ def _show(server: Server, command: list[str], http: bool) -> None:
     print(f"{server.name:<9} {where}\n    {' '.join(command)}")
 
 
+def _interactive() -> int:
+    """No arguments, e.g. double-clicked: show the choices, ask, and keep the window open to read the output."""
+    servers = discover()
+    for server in servers.values():
+        print(f"{server.name:<9} port {server.port}")
+    print("all       every server")
+    try:
+        choice = input("Which server to run (name or 'all')? ").strip()
+    except EOFError:
+        print(f"error: name a server: {', '.join(servers)}, all, list", file=sys.stderr)
+        return 2
+    code = main([choice]) if choice else 2
+    print(f"\nStopped (exit code {code}).")
+    with contextlib.suppress(EOFError):
+        input("Press Enter to close this window... ")
+    return code
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="run_mcp", description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument("target", help="a server name, 'all', or 'list'")
+    parser.add_argument("target", nargs="?", help="a server name, 'all', or 'list' (omit to be asked)")
     parser.add_argument("--stdio", action="store_true", help="use stdio instead of streamable HTTP")
     parser.add_argument("--print", dest="show_only", action="store_true", help="print the command and exit")
     parser.add_argument("extra", nargs="*", help="after --: arguments passed to the server")
     args = parser.parse_args(argv)
 
+    if args.target is None:
+        return _interactive()
     servers = discover()
     if args.target == "list":
         for server in servers.values():
