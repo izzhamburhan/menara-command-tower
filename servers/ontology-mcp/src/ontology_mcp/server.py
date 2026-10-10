@@ -54,6 +54,7 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
     @mcp.tool(
         description="Create the Incident for a tower: cause (FLOOD, POWER, TRANSPORT, HARDWARE, CONFIG, UNKNOWN), "
         "confidence 0-1, summary, clustered ticket ids and evidence entries "
+        "confidence 0-1, summary (5-500 characters), clustered ticket ids and evidence entries "
         "({source, tool, call_id, ref}) copied from earlier tool responses. One open incident per tower."
     )
     def ontology_create_incident(
@@ -83,6 +84,8 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
     @mcp.tool(
         description="Move an incident forward (OPEN to MITIGATING to RESOLVED, or OPEN to RESOLVED) "
         "and optionally append a note."
+        "and optionally append a note. The new status must differ from the current one and there is no way back, "
+        "so it cannot be used to add a note to an incident that stays in the same state."
     )
     def ontology_update_incident(incident_id: str, status: str, note: str | None = None) -> dict[str, Any]:
         return run(lambda conn: tools.update_incident(conn, incident_id, status, note))
