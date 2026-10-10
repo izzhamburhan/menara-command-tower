@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync)",
+      "Bash(uv run python -m pytest *)",
+      "Bash(uv run python -m ruff check *)",
+      "Bash(uv run python -m mypy *)",
+      "Bash(uv run python scripts/check_skill_parity.py)",
+      "Bash(uv run python scripts/sync_codex_skills.py)",
+      "Bash(uv run python -m menara_core.scenario_cli show)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)"
+    ]
+  }
+}

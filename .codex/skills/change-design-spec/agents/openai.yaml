@@ -1,0 +1,7 @@
+interface:
+  display_name: "Change Design Spec"
+  short_description: "Use when Menara discovery is done and requirements, acceptance criteria, the tool contract, table ownership..."
+  default_prompt: "Use $change-design-spec to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true

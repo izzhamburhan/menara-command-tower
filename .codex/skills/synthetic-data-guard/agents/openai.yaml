@@ -1,0 +1,7 @@
+interface:
+  display_name: "Synthetic Data Guard"
+  short_description: "Use when a Menara change touches seed data, scenario files, responses carrying subscriber or location data,..."
+  default_prompt: "Use $synthetic-data-guard to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true

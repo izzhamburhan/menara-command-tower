@@ -1,0 +1,7 @@
+interface:
+  display_name: "Implementation Gate"
+  short_description: "Use when Menara code edits are imminent, and also at Gate 1.5 to set up the ticket workspace"
+  default_prompt: "Use $implementation-gate to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true

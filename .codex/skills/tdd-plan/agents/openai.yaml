@@ -1,0 +1,7 @@
+interface:
+  display_name: "TDD Plan"
+  short_description: "Use when a Menara design spec is approved and a feature, bug fix, refactor, or test-only change needs a tes..."
+  default_prompt: "Use $tdd-plan to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true

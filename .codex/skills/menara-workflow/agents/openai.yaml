@@ -1,0 +1,7 @@
+interface:
+  display_name: "Menara Workflow"
+  short_description: "Use when starting any conversation or task in the Menara Command Center repo, before responding, reading fi..."
+  default_prompt: "Use $menara-workflow to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true

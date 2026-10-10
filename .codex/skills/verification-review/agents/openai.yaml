@@ -1,0 +1,7 @@
+interface:
+  display_name: "Verification Review"
+  short_description: "Use when Menara implementation or a test-only slice is complete and the change may be claimed fixed, comple..."
+  default_prompt: "Use $verification-review to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true

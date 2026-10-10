@@ -1,0 +1,7 @@
+interface:
+  display_name: "MCP Contract Guard"
+  short_description: "Use when a Menara change touches servers/, packages/menara-core/, a tool or response model, a SQLite table,..."
+  default_prompt: "Use $mcp-contract-guard to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Completion Checkpoint"
+  short_description: "Use when Menara work is finished and verified and the next step is deciding what happens to the changes: co..."
+  default_prompt: "Use $completion-checkpoint to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true

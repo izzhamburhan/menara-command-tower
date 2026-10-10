@@ -1,0 +1,7 @@
+interface:
+  display_name: "Change Intake Discovery"
+  short_description: "Use when starting a non-trivial Menara change and the current behavior, owning server, contracts, or risks..."
+  default_prompt: "Use $change-intake-discovery to handle this Menara task."
+
+policy:
+  allow_implicit_invocation: true
