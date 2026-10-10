@@ -20,7 +20,7 @@ INSTRUCTIONS = (
     "Linked objects for towers: blast radius, neighbours, upstream dependencies, and Incidents. "
     "ALL DATA IS SYNTHETIC. Pass a tower as enodeb_name (KKRI-0142) or site_id (SITE-KKRI-0142). "
     "Reads other domains' tables read-only; writes only incidents (ontology_create_incident, "
-    "ontology_update_incident). Every response has evidence[] naming the call that produced it."
+    "ontology_update_incident, ontology_add_incident_note). Every response has evidence[] naming the call that produced it."
 )
 
 
@@ -89,6 +89,13 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
     )
     def ontology_update_incident(incident_id: str, status: str, note: str | None = None) -> dict[str, Any]:
         return run(lambda conn: tools.update_incident(conn, incident_id, status, note))
+
+    @mcp.tool(
+        description="Append a progress note (1-500 characters) to an incident without changing its status. "
+        "Use it to record what you did or found; allowed in every status."
+    )
+    def ontology_add_incident_note(incident_id: str, note: str) -> dict[str, Any]:
+        return run(lambda conn: tools.add_incident_note(conn, incident_id, note))
 
     return mcp
 

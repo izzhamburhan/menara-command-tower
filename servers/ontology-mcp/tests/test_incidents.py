@@ -141,3 +141,38 @@ def test_a_rejected_status_move_says_what_is_allowed(conn: sqlite3.Connection) -
     tools.update_incident(conn, inc.incident_id, "RESOLVED")
     with pytest.raises(InvalidInputError, match=r"allowed: none \(already RESOLVED\)"):
         tools.update_incident(conn, inc.incident_id, "MITIGATING")
+
+
+def test_the_summary_error_says_how_long_it_was(conn: sqlite3.Connection) -> None:
+    with pytest.raises(InvalidInputError, match=r"summary must be 5-500 characters \(got 612\)"):
+        _create(conn, summary="x" * 612)
+
+
+def test_add_note_appends_without_changing_the_status(
+    conn: sqlite3.Connection, set_clock: Callable[[int], None]
+) -> None:
+    inc = _create(conn).data
+    set_clock(20)
+    first = tools.add_incident_note(conn, inc.incident_id, "  Drone MIS-0001 inspection complete.  ").data
+    assert first.status == "OPEN" and [n.text for n in first.notes] == ["Drone MIS-0001 inspection complete."]
+    assert first.updated_at.startswith("2026-11-14T07:20:00")
+    set_clock(40)
+    second = tools.add_incident_note(conn, inc.incident_id, "Tilt rolled back.").data
+    assert [n.text for n in second.notes] == ["Drone MIS-0001 inspection complete.", "Tilt rolled back."]
+    assert second.status == "OPEN"
+
+
+def test_add_note_is_allowed_on_a_resolved_incident(conn: sqlite3.Connection) -> None:
+    inc = _create(conn).data
+    tools.update_incident(conn, inc.incident_id, "RESOLVED")
+    note = tools.add_incident_note(conn, inc.incident_id, "Post-mortem: power restored at 13:00.").data
+    assert note.status == "RESOLVED" and len(note.notes) == 1
+
+
+def test_add_note_validation(conn: sqlite3.Connection) -> None:
+    inc = _create(conn).data
+    for bad in ["", "   ", "x" * 501]:
+        with pytest.raises(InvalidInputError, match="note must be 1-500 characters"):
+            tools.add_incident_note(conn, inc.incident_id, bad)
+    with pytest.raises(NotFoundError):
+        tools.add_incident_note(conn, "INC-9999", "hello")

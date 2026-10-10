@@ -353,7 +353,7 @@ def create_incident(
         raise InvalidInputError("cause_confidence must be between 0 and 1")
     text = summary.strip()
     if not SUMMARY_MIN <= len(text) <= SUMMARY_MAX:
-        raise InvalidInputError(f"summary must be {SUMMARY_MIN}-{SUMMARY_MAX} characters")
+        raise InvalidInputError(f"summary must be {SUMMARY_MIN}-{SUMMARY_MAX} characters (got {len(text)})")
     ids = list(dict.fromkeys(parse_ticket_id(t) for t in (ticket_ids or [])))
     if len(ids) > MAX_TICKETS:
         raise InvalidInputError(f"at most {MAX_TICKETS} tickets per incident")
@@ -468,3 +468,25 @@ def update_incident(
         ref=row["incident_id"],
     )
 
+
+def add_incident_note(conn: sqlite3.Connection, incident_id: str, note: str) -> Envelope[Incident]:
+    """Append a note to an incident without changing its status; allowed in every status."""
+    row = _require_incident(conn, incident_id)
+    body = note.strip()
+    if not body or len(body) > MAX_NOTE_CHARS:
+        raise InvalidInputError(f"note must be 1-{MAX_NOTE_CHARS} characters")
+    notes: list[dict[str, str]] = json.loads(row["notes"])
+    stamp = clock.as_of(conn)
+    notes.append({"at": stamp, "text": body})
+    conn.execute(
+        "UPDATE incident SET updated_at = ?, notes = ? WHERE incident_id = ?",
+        (stamp, json.dumps(notes), row["incident_id"]),
+    )
+    conn.commit()
+    return wrap(
+        conn,
+        source=SOURCE,
+        tool="ontology_add_incident_note",
+        data=_incident(conn, _require_incident(conn, row["incident_id"])),
+        ref=row["incident_id"],
+    )
