@@ -1,0 +1,1 @@
+"""menara-demo: a simple local web page that shows what the Menara MCP servers return. All data is synthetic."""
