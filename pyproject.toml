@@ -1,0 +1,66 @@
+[project]
+name = "menara"
+version = "0.1.0"
+description = "Menara Command Center: workspace root for the synthetic-data MCP servers."
+requires-python = ">=3.13"
+dependencies = ["menara-core"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "ruff>=0.11",
+    "mypy>=1.16",
+    "types-PyYAML>=6.0",
+    "tower-mcp",
+    "ticket-mcp",
+    "user-mcp",
+    "weather-mcp",
+    "grid-mcp",
+    "flood-mcp",
+    "sites-mcp",
+    "ontology-mcp",
+    "policy-mcp",
+    "twin-mcp",
+    "ran-mcp",
+    "drone-mcp",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "servers/*"]
+
+[tool.uv.sources]
+drone-mcp = { workspace = true }
+ran-mcp = { workspace = true }
+twin-mcp = { workspace = true }
+policy-mcp = { workspace = true }
+ontology-mcp = { workspace = true }
+sites-mcp = { workspace = true }
+flood-mcp = { workspace = true }
+grid-mcp = { workspace = true }
+weather-mcp = { workspace = true }
+menara-core = { workspace = true }
+tower-mcp = { workspace = true }
+ticket-mcp = { workspace = true }
+user-mcp = { workspace = true }
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+exclude = ["tests/"]
+files = ["packages/menara-core/src", "servers/*/src"]
+mypy_path = ["packages/menara-core/src", "servers/tower-mcp/src", "servers/ticket-mcp/src", "servers/user-mcp/src", "servers/weather-mcp/src", "servers/grid-mcp/src", "servers/flood-mcp/src", "servers/sites-mcp/src", "servers/ontology-mcp/src", "servers/policy-mcp/src", "servers/twin-mcp/src", "servers/ran-mcp/src", "servers/drone-mcp/src"]
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "servers", "tests"]
+addopts = "--import-mode=importlib"

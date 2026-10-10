@@ -1,0 +1,136 @@
+{
+  "mcpServers": {
+    "tower": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "tower-mcp",
+        "python",
+        "-m",
+        "tower_mcp"
+      ]
+    },
+    "ticket": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "ticket-mcp",
+        "python",
+        "-m",
+        "ticket_mcp"
+      ]
+    },
+    "user": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "user-mcp",
+        "python",
+        "-m",
+        "user_mcp"
+      ]
+    },
+    "weather": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "weather-mcp",
+        "python",
+        "-m",
+        "weather_mcp"
+      ]
+    },
+    "grid": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "grid-mcp",
+        "python",
+        "-m",
+        "grid_mcp"
+      ]
+    },
+    "flood": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "flood-mcp",
+        "python",
+        "-m",
+        "flood_mcp"
+      ]
+    },
+    "sites": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "sites-mcp",
+        "python",
+        "-m",
+        "sites_mcp"
+      ]
+    },
+    "ontology": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "ontology-mcp",
+        "python",
+        "-m",
+        "ontology_mcp"
+      ]
+    },
+    "policy": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "policy-mcp",
+        "python",
+        "-m",
+        "policy_mcp"
+      ]
+    },
+    "twin": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "twin-mcp",
+        "python",
+        "-m",
+        "twin_mcp"
+      ]
+    },
+    "ran": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "ran-mcp",
+        "python",
+        "-m",
+        "ran_mcp"
+      ]
+    },
+    "drone": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "drone-mcp",
+        "python",
+        "-m",
+        "drone_mcp"
+      ]
+    }
+  }
+}

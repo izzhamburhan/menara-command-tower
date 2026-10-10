@@ -1,0 +1,169 @@
+# Kuala Krai flood: SYNTHETIC scripted scenario. t_min = minutes since T0 (07:00 local). All data is fictional.
+name: kuala_krai_flood
+start: "2026-11-14T07:00:00+08:00"
+default_now_min: 0
+
+cluster:
+  code: KKRI
+  town: Kuala Krai
+  state: Kelantan
+  towers:
+    - {enodeb: KKRI-0142, lat: 5.5310, lng: 102.1970}   # hub, flooded
+    - {enodeb: KKRI-0143, lat: 5.5520, lng: 102.2150}   # overloaded neighbour
+    - {enodeb: KKRI-0144, lat: 5.5050, lng: 102.2250}   # overloaded neighbour
+    - {enodeb: KKRI-0145, lat: 5.5700, lng: 102.1650}
+    - {enodeb: KKRI-0146, lat: 5.4850, lng: 102.1700}
+    - {enodeb: KKRI-0147, lat: 5.5900, lng: 102.2400}
+    - {enodeb: KKRI-0148, lat: 5.4600, lng: 102.2300}
+    - {enodeb: KKRI-0149, lat: 5.6200, lng: 102.1900}
+    - {enodeb: KKRI-0150, lat: 5.5400, lng: 102.2800}
+    - {enodeb: KKRI-0151, lat: 5.4300, lng: 102.1900}
+    - {enodeb: KKRI-0152, lat: 5.6500, lng: 102.2600}
+    - {enodeb: KKRI-0153, lat: 5.5000, lng: 102.1200}
+
+baseline_kpi: {prb_util: 48.0, drop_rate: 0.6, throughput_mbps: 55.0}
+
+state_events:
+  - {t_min: -240, tower: KKRI-0142, status: DEGRADED, battery_pct: 78, mains_ok: false}
+  - {t_min: -120, tower: KKRI-0142, status: DEGRADED, battery_pct: 52, mains_ok: false}
+  - {t_min: -60,  tower: KKRI-0142, status: DEGRADED, battery_pct: 34, mains_ok: false}
+  - {t_min: -5,   tower: KKRI-0142, status: DOWN,     battery_pct: 14, mains_ok: false}
+  - {t_min: 360,  tower: KKRI-0142, status: UP,       battery_pct: 20, mains_ok: true}
+
+alarm_events:
+  - {id: ALM-KK-0001, tower: KKRI-0142, code: MAINS_FAIL,       severity: CRITICAL, raised_min: -240, message: "Mains supply failure; running on battery", cleared_min: 360}
+  - {id: ALM-KK-0002, tower: KKRI-0142, code: LOW_BATTERY,      severity: MAJOR,    raised_min: -30,  message: "Battery below 25%", cleared_min: 360}
+  - {id: ALM-KK-0003, tower: KKRI-0142, code: SITE_DOWN,        severity: CRITICAL, raised_min: -5,   message: "Site not reachable; all cells out of service", cleared_min: 360}
+  - {id: ALM-KK-0004, tower: KKRI-0143, code: TRAFFIC_OVERLOAD, severity: WARNING,  raised_min: -5,   message: "PRB utilisation above 85%", cleared_min: 360}
+  - {id: ALM-KK-0005, tower: KKRI-0144, code: TRAFFIC_OVERLOAD, severity: WARNING,  raised_min: -5,   message: "PRB utilisation above 85%", cleared_min: 360}
+
+kpi_profiles:
+  - {tower: KKRI-0142, from_min: -5,  prb_util: 0.0,  drop_rate: 0.0, throughput_mbps: 0.0}
+  - {tower: KKRI-0143, from_min: -30, prb_util: 62.0, drop_rate: 1.4, throughput_mbps: 41.0}
+  - {tower: KKRI-0143, from_min: -10, prb_util: 80.0, drop_rate: 2.9, throughput_mbps: 30.0}
+  - {tower: KKRI-0143, from_min: -5,  prb_util: 91.0, drop_rate: 4.6, throughput_mbps: 22.0}
+  - {tower: KKRI-0144, from_min: -30, prb_util: 60.0, drop_rate: 1.3, throughput_mbps: 42.0}
+  - {tower: KKRI-0144, from_min: -10, prb_util: 78.0, drop_rate: 2.7, throughput_mbps: 31.0}
+  - {tower: KKRI-0144, from_min: -5,  prb_util: 91.0, drop_rate: 4.4, throughput_mbps: 23.0}
+  - {tower: KKRI-0142, from_min: 360, prb_util: 45.0, drop_rate: 0.7, throughput_mbps: 52.0}
+  - {tower: KKRI-0143, from_min: 360, prb_util: 50.0, drop_rate: 0.8, throughput_mbps: 50.0}
+  - {tower: KKRI-0144, from_min: 360, prb_util: 50.0, drop_rate: 0.8, throughput_mbps: 50.0}
+
+# Ticket storm: TK-88213 lands at T0; the rest follow within window_min. Visible only once the clock reaches them.
+tickets:
+  hub: KKRI-0142
+  first_id: 88213
+  count: 37
+  window_min: 12
+  max_distance_km: 12          # storm subscribers come from cluster towers within this of the hub
+  subscribers_per_tower: 40
+  hub_share: 0.6               # fraction of tickets from the hub tower's own subscribers
+  first_summary: "No data since 7am, banjir kat Kuala Krai"
+  localities: [Kuala Krai, Dabong, Manek Urai, Olak Jeram, Gunong, Mengkebang]
+  summaries:
+    - "Tiada data, air naik kat kampung"
+    - "No internet, banjir teruk kat sini"
+    - "Line putus dari pagi tadi"
+    - "Cannot call or use data since morning, flood"
+    - "Takde line langsung, banjir"
+    - "No signal at all, water is rising near my house"
+# Context data. Rainfall and river levels are invented for the demo; thresholds are not real warning criteria.
+weather:
+  station: {id: WX-KKRI-01, name: "Kuala Krai (synthetic station)", lat: 5.5290, lng: 102.2010}
+  # mm per hour, from from_min onward. Sums to 148 mm over the 24 h before T0.
+  rain_profile:
+    - {from_min: -1440, mm: 1.0,  lightning: 0}
+    - {from_min: -720,  mm: 5.0,  lightning: 4}
+    - {from_min: -240,  mm: 18.0, lightning: 120}
+    - {from_min: 0,     mm: 25.0, lightning: 150}
+    - {from_min: 60,    mm: 15.0, lightning: 80}
+    - {from_min: 240,   mm: 5.0,  lightning: 10}
+
+grid:
+  feeders:
+    - {id: FDR-KKRI-01, name: "Kuala Krai Town 11kV (synthetic)",   customers: 3200, towers: [KKRI-0142]}
+    - {id: FDR-KKRI-02, name: "Riverside 11kV (synthetic)",         customers: 5400, towers: [KKRI-0148, KKRI-0151, KKRI-0153]}
+    - {id: FDR-KKRI-03, name: "Kuala Krai North 11kV (synthetic)",  customers: 7100, towers: [KKRI-0143, KKRI-0144, KKRI-0145, KKRI-0146, KKRI-0147, KKRI-0149, KKRI-0150, KKRI-0152]}
+  events:
+    - {t_min: -240, feeder: FDR-KKRI-01, status: TRIPPED, note: "Tripped on earth fault; flooded substation, access by road not possible", restoration_eta_min: null}
+    - {t_min: -30,  feeder: FDR-KKRI-02, status: AT_RISK, note: "Substation close to the flood extent; pre-emptive isolation possible", restoration_eta_min: null}
+    - {t_min: 360,  feeder: FDR-KKRI-01, status: ENERGISED, note: "Supply restored", restoration_eta_min: null}
+    - {t_min: 360,  feeder: FDR-KKRI-02, status: ENERGISED, note: "Normal supply", restoration_eta_min: null}
+
+flood:
+  gauge: {id: GAUGE-KKRI-01, river: "Sungai Kelantan (synthetic)", station: "Kuala Krai (synthetic gauge)", lat: 5.5250, lng: 102.2040, warning_m: 23.0, danger_m: 25.0}
+  # Linear interpolation between points. Above danger_m from before T0.
+  levels:
+    - {t_min: -1440, m: 18.0}
+    - {t_min: -720,  m: 21.0}
+    - {t_min: -240,  m: 24.0}
+    - {t_min: 0,     m: 26.4}
+    - {t_min: 180,   m: 27.1}
+    - {t_min: 480,   m: 25.2}
+  # Circular flood extents. The latest one with from_min <= now applies.
+  extents:
+    - {id: EXT-KKRI-01, from_min: -240, name: "Kuala Krai flood extent", lat: 5.5280, lng: 102.2000, radius_km: 1.0, max_depth_m: 0.4}
+    - {id: EXT-KKRI-02, from_min: -60,  name: "Kuala Krai flood extent", lat: 5.5280, lng: 102.2000, radius_km: 3.0, max_depth_m: 0.8}
+    - {id: EXT-KKRI-03, from_min: 0,    name: "Kuala Krai flood extent", lat: 5.5280, lng: 102.2000, radius_km: 4.5, max_depth_m: 1.2}
+    - {id: EXT-KKRI-04, from_min: 180,  name: "Kuala Krai flood extent", lat: 5.5280, lng: 102.2000, radius_km: 6.0, max_depth_m: 1.4}
+
+# Critical sites near the flood. Names are fictional. emergency_service sites need human approval for any change.
+sites:
+  - {id: CS-KKRI-01, name: "Kuala Krai Clinic A (synthetic)",        kind: CLINIC,     lat: 5.5330, lng: 102.1990, serving: KKRI-0142}
+  - {id: CS-KKRI-02, name: "Dabong Clinic B (synthetic)",            kind: CLINIC,     lat: 5.4900, lng: 102.2200, serving: KKRI-0144}
+  - {id: CS-KKRI-03, name: "Kuala Krai Police Station (synthetic)",  kind: POLICE,     lat: 5.5300, lng: 102.1950, serving: KKRI-0142}
+  - {id: CS-KKRI-04, name: "Kuala Krai Primary School (synthetic)",  kind: SCHOOL,     lat: 5.5500, lng: 102.2100, serving: KKRI-0143}
+  - {id: CS-KKRI-05, name: "Riverside Primary School (synthetic)",   kind: SCHOOL,     lat: 5.4650, lng: 102.2280, serving: KKRI-0148}
+  - {id: CS-KKRI-06, name: "Kuala Krai Logistics Co, SLA (synthetic)", kind: ENTERPRISE, lat: 5.5480, lng: 102.2120, serving: KKRI-0143}
+
+# Estimated attached subscribers per cluster tower (synthetic). The 12 towers sum to 8,420.
+subscribers_est:
+  KKRI-0142: 980
+  KKRI-0143: 820
+  KKRI-0144: 790
+  KKRI-0145: 700
+  KKRI-0146: 680
+  KKRI-0147: 640
+  KKRI-0148: 700
+  KKRI-0149: 560
+  KKRI-0150: 600
+  KKRI-0151: 620
+  KKRI-0152: 500
+  KKRI-0153: 830
+
+# Policy defaults (all editable). Peak hours use the local time of the scenario.
+policy:
+  auto_allow_max_subscribers: 500
+  auto_allow_min_confidence: 0.9
+  peak_start_hour: 18
+  peak_end_hour: 23
+  max_actions_per_hour: 10
+  token_ttl_s: 300
+
+# RAN sandbox. A scripted failure makes the first tilt on KKRI-0143 barely work, so the agent has to
+# verify, roll back, and try the next option. efficacy 1.0 = the predicted effect of the model.
+ran:
+  scripted_failures:
+    - {action: ran_tilt_cells, tower: KKRI-0143, attempt: 1, efficacy: 0.1}
+
+# Drones are simulated. Findings are canned (no real vision model).
+drone:
+  speed_kmh: 90
+  inspect_min: 15
+  depots:
+    - {id: DEP-KTBH, name: "Kota Bharu depot (synthetic)",     lat: 6.1254, lng: 102.2381, drones: [DRN-01, DRN-02]}
+    - {id: DEP-KULP, name: "Kuala Lumpur depot (synthetic)",   lat: 3.1390, lng: 101.6869, drones: [DRN-03, DRN-04]}
+    - {id: DEP-JBHR, name: "Johor Bahru depot (synthetic)",    lat: 1.4927, lng: 103.7414, drones: [DRN-05, DRN-06]}
+    - {id: DEP-KUAN, name: "Kuantan depot (synthetic)",        lat: 3.8077, lng: 103.3260, drones: [DRN-07, DRN-08]}
+    - {id: DEP-KCHG, name: "Kuching depot (synthetic)",        lat: 1.5535, lng: 110.3593, drones: [DRN-09, DRN-10]}
+    - {id: DEP-KKIN, name: "Kota Kinabalu depot (synthetic)",  lat: 5.9804, lng: 116.0735, drones: [DRN-11, DRN-12]}
+  findings:
+    KKRI-0142:
+      access_road: {status: FLOODED, water_depth_m: 0.6, passable_by: BOAT}
+      tower_structure: INTACT
+      antenna_alignment: ALIGNED
+      power_cabinet: WATER_DAMAGE_RISK
+      genset: {status: UNREACHABLE_BY_ROAD, access: BOAT}
+      hazards: ["Fast-flowing water at the site entrance"]
+      summary: "Access road under 0.6 m of water, tower intact, genset unreachable by road."
+      confidence: 0.91
