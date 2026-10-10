@@ -75,7 +75,7 @@ The folder is `servers/`, not `mcp/`: pytest's importlib mode turns a folder nam
 | grid-mcp | done, 3 tools, tests |
 | flood-mcp | done, 3 tools, tests |
 | sites-mcp | done, 3 tools, tests |
-| ontology-mcp | done, 7 tools (owns `incident`, `incident_ticket`), tests |
+| ontology-mcp | done, 8 tools (owns `incident`, `incident_ticket`), tests |
 | policy-mcp | done, 10 tools (owns `policy_setting`, `approval`, `audit_log`), tests |
 | twin-mcp | done, 3 tools (owns `twin_simulation`), tests |
 | ran-mcp | done, 6 tools (owns `ran_change`, `ran_change_item`, `ran_kpi_effect`), tests |

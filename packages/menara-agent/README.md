@@ -24,6 +24,7 @@ Environment: `DEEPSEEK_API_KEY` (required), `DEEPSEEK_MODEL` (default `deepseek-
 
 - The model never sees `policy_approve`, `policy_reject`, `policy_update_setting` or `policy_set_kill_switch`, and calling them is refused.
 - When `policy_check_action` answers `ask`, the runner prompts **you** in the terminal. `y` makes the runner (not the model) call `policy_approve` with `MENARA_APPROVER_KEY`; anything else, including no terminal, rejects it.
+- Policy tokens are long, and models sometimes garble a character when copying one. The runner remembers the tokens policy-mcp issued and swaps in the real one when the model's copy is at least 90% identical (it prints a line when it does). It never invents or widens a token; the server still checks the signature, action and targets.
 - `demo_advance_clock(minutes)` is a runner-side demo tool that moves the scenario clock so the model can wait for a drone. The servers never move it.
 
 ## Layout

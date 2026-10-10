@@ -27,6 +27,7 @@ Every tool returns `{synthetic: true, as_of, data, evidence[], warnings[]}`. `si
 | `ontology_list_incidents` | `status?, enodeb_name?, limit=50` | Incidents, newest first |
 | `ontology_update_incident` | `incident_id, status, note?` | The updated incident |
 | `ontology_update_incident` | `incident_id, status, note?` | The updated incident. The status must move forward; a rejected move lists the allowed statuses |
+| `ontology_add_incident_note` | `incident_id, note` | The updated incident. Appends a 1-500 character note and never changes the status; allowed in every status |
 
 **Incident rules.** `cause` is FLOOD, POWER, TRANSPORT, HARDWARE, CONFIG or UNKNOWN; `cause_confidence` is 0 to 1; `summary` is 5 to 500 characters. `ticket_ids` must already exist at the scenario time (up to 200). `evidence` entries are `{source, tool, call_id, ref?}` copied from earlier tool responses, so every claim links to the call that produced it (up to 30). Only one open incident per tower. Status moves forward only: OPEN, MITIGATING, RESOLVED (OPEN may go straight to RESOLVED).
 

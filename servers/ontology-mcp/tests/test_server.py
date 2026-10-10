@@ -13,6 +13,7 @@ EXPECTED = {
     "ontology_get_incident",
     "ontology_list_incidents",
     "ontology_update_incident",
+    "ontology_add_incident_note",
 }
 
 

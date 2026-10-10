@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from difflib import SequenceMatcher
 from typing import Any
 
 from menara_agent.loop import ToolRunner
 from menara_agent.tools import HIDDEN_TOOLS
 
 HUMAN = "terminal-human"
+TOKEN_SIMILARITY = 0.9
 
 
 class GatedRunner:
@@ -22,17 +24,35 @@ class GatedRunner:
         self._inner = inner
         self._approver_key = approver_key
         self._ask_human = ask_human
+        self._tokens: list[str] = []  # tokens policy-mcp issued, so a garbled copy can be repaired
 
     async def call(self, name: str, arguments: dict[str, Any]) -> str:
         if name in HIDDEN_TOOLS:
             raise PermissionError(f"{name} is reserved for the human approver and is not available to the agent")
-        result = await self._inner.call(name, arguments)
+        result = await self._inner.call(name, self._repair_token(arguments))
         if name != "policy_check_action":
             return result
         data = _data(result)
+        self._remember(data.get("token"))
         if data.get("decision") != "ask" or not data.get("approval_id"):
             return result
         return await self._decide(str(data["approval_id"]), arguments, data)
+
+    def _remember(self, token: Any) -> None:
+        if isinstance(token, str) and token and token not in self._tokens:
+            self._tokens.append(token)
+
+    def _repair_token(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        """A model copying a 200-character token can drop or change a character. Swap in the token policy-mcp
+        actually issued when the copy is nearly identical; anything else is left for the server to reject."""
+        supplied = arguments.get("policy_token")
+        if not isinstance(supplied, str) or supplied in self._tokens or not self._tokens:
+            return arguments
+        best = max(self._tokens, key=lambda t: SequenceMatcher(None, supplied, t, autojunk=False).ratio())
+        if SequenceMatcher(None, supplied, best, autojunk=False).ratio() < TOKEN_SIMILARITY:
+            return arguments
+        print("    (runner repaired a mistyped policy_token with the one policy-mcp issued)")
+        return {**arguments, "policy_token": best}
 
     async def _decide(self, approval_id: str, arguments: dict[str, Any], data: dict[str, Any]) -> str:
         summary = (
@@ -50,6 +70,7 @@ class GatedRunner:
             {"approval_id": approval_id, "approver": HUMAN, "approver_key": self._approver_key},
         )
         token = _data(approved).get("token")
+        self._remember(token)
         return json.dumps({"decision": "approved_by_human", "approval_id": approval_id, "token": token})
 
 
