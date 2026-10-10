@@ -1,0 +1,22 @@
+[project]
+name = "drone-mcp"
+version = "0.1.0"
+description = "MCP server: Simulated drones: dispatch a tower inspection and read canned vision findings (synthetic data)."
+requires-python = ">=3.13"
+dependencies = [
+    "menara-core",
+    "mcp[cli]>=1.9,<2",
+]
+
+[project.scripts]
+drone-mcp = "drone_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/drone_mcp"]
+
+[tool.uv.sources]
+menara-core = { workspace = true }
