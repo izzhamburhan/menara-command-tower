@@ -60,6 +60,7 @@ uv run python -m pytest
 uv run python -m ruff check .
 uv run python -m mypy
 uv run --package tower-mcp python -m tower_mcp
+uv run python scripts/run_mcp.py list|<name>|all           # run servers over HTTP on their ports (--stdio, --print)
 uv run python -m menara_agent "Ticket TK-88213 arrived. Investigate."   # needs DEEPSEEK_API_KEY in .env
 ```
 
