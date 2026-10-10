@@ -12,7 +12,7 @@ contract. Check every item before design approval, before edits, and again at ve
 
 - The server depends only on `menara-core`, plus `mcp[cli]>=1.9,<2`. No import of another server.
 - No MCP calls another MCP, over the network or in process. The agent orchestrates.
-- Cross-domain reads are read-only and limited: `ontology-mcp`, `twin-mcp` and `policy-mcp` read base tables to compute impact themselves; `ran-mcp` reads `cell` and `tower`; `drone-mcp` reads `tower`; `tower-mcp` and `ontology-mcp` apply `ran_kpi_effect` via `menara_core.kpi_overlay`. List what a new server reads in its README, and do not widen the list without the developer's approval.
+- Cross-domain reads are read-only and limited: `ontology-mcp`, `twin-mcp` and `policy-mcp` read base tables to compute impact themselves; `ran-mcp` reads `cell` and `tower`; `drone-mcp` reads `tower`; `user-mcp` reads `tower_subscribers` for the population estimate; `tower-mcp` and `ontology-mcp` apply `ran_kpi_effect` via `menara_core.kpi_overlay`. List what a new server reads in its README, and do not widen the list without the developer's approval.
 - Entry points: `python -m <module>` works, stdio by default, `--transport streamable-http` with the port from the `AGENTS.md` port table. `.mcp.json` uses `python -m`, never the console-script `.exe`.
 
 ## Data ownership

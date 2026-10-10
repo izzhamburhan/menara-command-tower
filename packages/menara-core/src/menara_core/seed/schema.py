@@ -102,6 +102,19 @@ CREATE TABLE subscriber_experience (
     PRIMARY KEY (msisdn_hash, t_min)
 );
 
+-- base (seed only): user domain, served by user-mcp. Where a subscriber was over time, at cell level.
+-- One row each time the subscriber changes cell; a visit lasts until the next row's start_min.
+CREATE TABLE subscriber_cell_visit (
+    msisdn_hash  TEXT NOT NULL REFERENCES subscriber (msisdn_hash),
+    start_min    INTEGER NOT NULL,
+    serving_cell TEXT NOT NULL REFERENCES cell (cell_id),
+    enodeb_name  TEXT NOT NULL REFERENCES tower (enodeb_name),
+    cell_lat     REAL NOT NULL,
+    cell_lng     REAL NOT NULL,
+    PRIMARY KEY (msisdn_hash, start_min)
+);
+CREATE INDEX idx_visit_geo ON subscriber_cell_visit (cell_lat, cell_lng);
+
 -- base (seed only): ticket domain, served by ticket-mcp
 CREATE TABLE ticket (
     ticket_id     TEXT PRIMARY KEY,

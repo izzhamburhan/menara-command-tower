@@ -22,6 +22,7 @@ Every tool returns the shared envelope: `{synthetic: true, as_of, data, evidence
 | --- | --- | --- |
 | `tower_get_status` | `enodeb_name` | Tower attributes, `status` (UP/DEGRADED/DOWN), `battery_pct`, `mains_ok`, `cells[]`, `active_alarm_count`, `latest_kpi`, `neighbours[]` (nearest 4, with status and PRB %) |
 | `tower_list_in_bbox` | `min_lat, min_lng, max_lat, max_lng, status?, limit=500` | `towers[]` (id, site, town, state, lat, lng, status), `returned`, `truncated` |
+| `tower_list_in_radius` | `lat, lng, radius_km` (0.1-200)`, status?, limit=500` | `center`, `radius_km`, `towers[]` (the box fields plus `distance_km`, nearest first), `returned`, `truncated` |
 | `tower_get_kpi` | `enodeb_name, window_min=60` (5-1440) | `points[]` (PRB utilisation %, drop rate %, throughput Mbps), `summary` |
 | `tower_get_alarms` | `enodeb_name?, severity?, active_only=true, limit=200` | `alarms[]` most severe first, `returned`, `truncated` |
 
@@ -40,7 +41,7 @@ Errors: malformed id or out-of-range argument is `InvalidInputError`; unknown to
 
 Environment: `MENARA_TOWER_SOURCE`, `MENARA_TOWER_API_URL`, and `MENARA_TOWER_API_TOKEN` (sent as `Authorization: Bearer ...`).
 
-The tool names, arguments and response models do not change between sources. Two fields behave differently on a live source: `KpiPoint.t_min` is `null` (there is no scenario clock), and `as_of` is the time of the call.
+`tower_list_in_radius` is built on the box endpoint (it fetches the circle's bounding box, then filters by exact distance), so Tower API v1 needs no extra endpoint for it. The tool names, arguments and response models do not change between sources. Two fields behave differently on a live source: `KpiPoint.t_min` is `null` (there is no scenario clock), and `as_of` is the time of the call.
 
 **Tower API v1.** This contract is **ours, not any real system's**. A real OSS would need a thin gateway or mapper in front that exposes these endpoints. All responses are JSON; `404` means "no such tower"; any other error status, a timeout, or a response that does not match becomes a `SourceUnavailableError` ("Tower API ...").
 

@@ -53,5 +53,5 @@ def test_hub_lists_tower_tools_and_answers_a_call(tmp_path: Path, monkeypatch: p
             return names, json.loads(reply)
 
     names, payload = asyncio.run(go())
-    assert names == ["tower_get_alarms", "tower_get_kpi", "tower_get_status", "tower_list_in_bbox"]
+    assert names == ["tower_get_alarms", "tower_get_kpi", "tower_get_status", "tower_list_in_bbox", "tower_list_in_radius"]
     assert payload["synthetic"] is True and settings.db_path() == db_file.resolve()

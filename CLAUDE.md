@@ -68,9 +68,9 @@ The folder is `servers/`, not `mcp/`: pytest's importlib mode turns a folder nam
 
 | MCP | State |
 | --- | --- |
-| tower-mcp | done, 4 tools, tests, strict typing |
+| tower-mcp | done, 5 tools (box and radius search), tests, strict typing |
 | ticket-mcp | done, 4 tools (owns `ticket_note`, `ticket_resolution`), tests |
-| user-mcp | done, 2 tools, PII masked, tests |
+| user-mcp | done, 5 tools (area lists, trails), PII masked, tests |
 | weather-mcp | done, 2 tools, tests |
 | grid-mcp | done, 3 tools, tests |
 | flood-mcp | done, 3 tools, tests |
@@ -102,7 +102,7 @@ Prefer `python -m ...` over console scripts: some Windows machines block `.venv`
 ## Rules every MCP follows
 
 1. **Separate server.** Depends only on `menara-core`. No MCP calls another MCP; the agent orchestrates.
-2. **Own tables only.** Everyone reads `data/menara.db`; each MCP writes only the tables it owns. `menara_core.db.connect(path, owned_tables=...)` enforces it with a SQLite authorizer. No owned tables means a read-only connection. Cross-domain reads of tables another domain owns are read-only and limited: `ontology-mcp`, `twin-mcp` and `policy-mcp` read base tables to compute impact themselves; `ran-mcp` reads `cell` and `tower`; `drone-mcp` reads `tower`; `tower-mcp` and `ontology-mcp` apply `ran_kpi_effect` through `menara_core.kpi_overlay`. Each server's README says what it reads.
+2. **Own tables only.** Everyone reads `data/menara.db`; each MCP writes only the tables it owns. `menara_core.db.connect(path, owned_tables=...)` enforces it with a SQLite authorizer. No owned tables means a read-only connection. Cross-domain reads of tables another domain owns are read-only and limited: `ontology-mcp`, `twin-mcp` and `policy-mcp` read base tables to compute impact themselves; `ran-mcp` reads `cell` and `tower`; `drone-mcp` reads `tower`; `user-mcp` reads `tower_subscribers` for the population estimate; `tower-mcp` and `ontology-mcp` apply `ran_kpi_effect` through `menara_core.kpi_overlay`. Each server's README says what it reads.
 3. **Envelope.** Every tool returns `Envelope` with `synthetic: true` and `evidence[]`.
 4. **Domain-prefixed tool names** (`tower_get_status`).
 5. **Tests first, strict typing.** pytest, ruff, mypy strict. Tool logic lives in `tools.py` as plain functions; `server.py` only registers them.

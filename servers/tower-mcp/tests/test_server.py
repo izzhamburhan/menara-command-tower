@@ -6,10 +6,16 @@ from pathlib import Path
 from tower_mcp.server import build_server
 from tower_mcp.source_sqlite import SqliteSourceFactory
 
-EXPECTED_TOOLS = {"tower_get_status", "tower_list_in_bbox", "tower_get_kpi", "tower_get_alarms"}
+EXPECTED_TOOLS = {
+    "tower_get_status",
+    "tower_list_in_bbox",
+    "tower_list_in_radius",
+    "tower_get_kpi",
+    "tower_get_alarms",
+}
 
 
-def test_server_registers_the_four_tools(db_file: Path) -> None:
+def test_server_registers_its_tools(db_file: Path) -> None:
     tools = asyncio.run(build_server(SqliteSourceFactory(db_file)).list_tools())
     assert {t.name for t in tools} == EXPECTED_TOOLS
 

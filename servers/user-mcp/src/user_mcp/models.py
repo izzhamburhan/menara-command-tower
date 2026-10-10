@@ -46,3 +46,61 @@ class ExperienceWindow(BaseModel):
     latest: ExperiencePoint | None
     points: list[ExperiencePoint]
     summary: ExperienceSummary
+
+
+class Centre(BaseModel):
+    lat: float
+    lng: float
+
+
+class AreaSubscriber(BaseModel):
+    msisdn_hash: str
+    serving_cell: str
+    enodeb_name: str
+    cell_lat: float
+    cell_lng: float
+    attached: bool
+    latest_label: ExperienceLabel | None
+
+
+class TowerSubscribers(BaseModel):
+    """subscribers_sampled counts the synthetic sample in this dataset; subscribers_est is the tower's population estimate."""
+
+    enodeb_name: str
+    cell_lat: float
+    cell_lng: float
+    subscribers_sampled: int
+    subscribers_est: int | None
+
+
+class SubscriberList(BaseModel):
+    center: Centre | None
+    radius_km: float | None
+    enodeb_name: str | None
+    towers: list[TowerSubscribers]
+    subscribers: list[AreaSubscriber]
+    subscribers_total: int | None
+    returned: int
+    truncated: bool
+    withheld: bool
+    location_precision: Literal["cell"] = "cell"
+
+
+class TrailSegment(BaseModel):
+    serving_cell: str
+    enodeb_name: str
+    cell_lat: float
+    cell_lng: float
+    arrived_at: str
+    left_at: str | None
+    duration_min: int
+    current: bool
+
+
+class Trail(BaseModel):
+    msisdn_hash: str
+    window_min: int
+    segments: list[TrailSegment]
+    moves: int
+    distinct_towers: int
+    location_precision: Literal["cell"] = "cell"

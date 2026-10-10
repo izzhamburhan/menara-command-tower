@@ -7,21 +7,26 @@ from __future__ import annotations
 
 from menara_core.envelope import Envelope, wrap_at
 from menara_core.errors import InvalidInputError, NotFoundError
+from menara_core.geo import bbox_around, haversine_km
 from menara_core.ids import parse_enodeb
 
 from tower_mcp.models import (
     AlarmList,
+    Centre,
     KpiSummary,
     KpiWindow,
     NeighbourInfo,
     TowerDetail,
     TowerList,
+    TowerNearby,
+    TowerRadiusList,
 )
 from tower_mcp.source import TowerRecord, TowerSource
 
 SOURCE = "tower-mcp"
 MAX_LIMIT = 2000
 MAX_WINDOW_MIN = 1440
+MIN_RADIUS_KM, MAX_RADIUS_KM = 0.1, 200.0
 STATUSES = {"UP", "DEGRADED", "DOWN", "UNKNOWN"}
 SEVERITIES = {"CRITICAL", "MAJOR", "MINOR", "WARNING"}
 
@@ -105,6 +110,52 @@ def list_in_bbox(
         source,
         "tower_list_in_bbox",
         TowerList(towers=pins, returned=len(pins), truncated=truncated),
+        warnings=warnings,
+    )
+
+
+def list_in_radius(
+    source: TowerSource,
+    lat: float,
+    lng: float,
+    radius_km: float,
+    status: str | None = None,
+    limit: int = 500,
+) -> Envelope[TowerRadiusList]:
+    """Towers within radius_km of a point, nearest first. Built on the box search so every source supports it."""
+    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
+        raise InvalidInputError("Invalid centre: need -90<=lat<=90 and -180<=lng<=180")
+    if not MIN_RADIUS_KM <= radius_km <= MAX_RADIUS_KM:
+        raise InvalidInputError(f"radius_km must be between {MIN_RADIUS_KM} and {MAX_RADIUS_KM}")
+    if status is not None and status not in STATUSES:
+        raise InvalidInputError(f"status must be one of {sorted(STATUSES)}")
+    if not 1 <= limit <= MAX_LIMIT:
+        raise InvalidInputError(f"limit must be between 1 and {MAX_LIMIT}")
+    min_lat, min_lng, max_lat, max_lng = bbox_around(lat, lng, radius_km)
+    fetched = source.list_towers(
+        max(min_lat, -90.0), max(min_lng, -180.0), min(max_lat, 90.0), min(max_lng, 180.0), status, MAX_LIMIT + 1
+    )
+    warnings: list[str] = []
+    if len(fetched) > MAX_LIMIT:
+        fetched = fetched[:MAX_LIMIT]
+        warnings.append(
+            f"The area holds more than {MAX_LIMIT} towers; some in the circle may be missing. Use a smaller radius."
+        )
+    inside = sorted(
+        ((haversine_km(lat, lng, p.lat, p.lng), p) for p in fetched), key=lambda pair: (pair[0], pair[1].enodeb_name)
+    )
+    inside = [pair for pair in inside if pair[0] <= radius_km]
+    truncated = len(inside) > limit
+    if truncated:
+        warnings.append(f"Result truncated at {limit} towers (the nearest are kept); lower the radius or filter by status")
+    towers = [TowerNearby(**p.model_dump(), distance_km=round(d, 3)) for d, p in inside[:limit]]
+    return _wrap(
+        source,
+        "tower_list_in_radius",
+        TowerRadiusList(
+            center=Centre(lat=lat, lng=lng), radius_km=radius_km, towers=towers, returned=len(towers), truncated=truncated
+        ),
+        ref=f"{lat},{lng}",
         warnings=warnings,
     )
 
