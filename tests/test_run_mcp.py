@@ -4,6 +4,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -65,3 +66,30 @@ def test_an_unknown_name_is_an_error_that_lists_the_choices(capsys: pytest.Captu
     assert run_mcp.main(["nope", "--print"]) == 2
     err = capsys.readouterr().err
     assert "nope" in err and "tower" in err
+
+def test_no_arguments_asks_which_server_and_keeps_the_window_open(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    answers = iter(["tower", ""])  # the server name, then Enter at "press Enter to close"
+    prompts: list[str] = []
+
+    def fake_input(prompt: str = "") -> str:
+        prompts.append(prompt)
+        return next(answers)
+
+    ran: list[list[str]] = []
+    monkeypatch.setattr("builtins.input", fake_input)
+    monkeypatch.setattr(run_mcp.subprocess, "run", lambda command, **_: ran.append(command) or SimpleNamespace(returncode=1))
+    assert run_mcp.main([]) == 1
+    assert ran and "tower_mcp" in ran[0] and "--port" in ran[0]
+    assert "8101" in capsys.readouterr().out  # the list was shown
+    assert len(prompts) == 2 and "close" in prompts[1].lower()
+
+
+def test_no_arguments_and_no_terminal_prints_usage(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    def no_input(_: str = "") -> str:
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", no_input)
+    assert run_mcp.main([]) == 2
+    assert "tower" in capsys.readouterr().err
