@@ -44,6 +44,8 @@ uv run python -m menara_agent "Ticket TK-88213 just arrived. Find the cause and 
 
 `menara_agent` is a small **test driver**, not the team's real agent. It lets a model call all twelve servers so you can watch the flow. When policy says a human must decide, it stops and asks you in the terminal (`Approve? [y/N]`). See [`packages/menara-agent/README.md`](packages/menara-agent/README.md).
 
+**See it in a browser.** `uv run python -m menara_demo` starts the servers and a simple demo page at http://127.0.0.1:8200: a map of Malaysia where you click to circle a place, see its towers and subscribers, and open a subscriber's trail, plus a console to run any tool and read the raw output. It is a demo aid, not the real UI. See [`packages/menara-demo/README.md`](packages/menara-demo/README.md).
+
 **Or use the servers from your own MCP client** (Claude Code, Codex, an inspector): [`.mcp.json`](.mcp.json) already registers all twelve over stdio. For a browser-style tool such as `npx @modelcontextprotocol/inspector`, run a server over HTTP with `scripts/run_mcp.py` and connect to `http://127.0.0.1:<port>/mcp`.
 
 ## The twelve MCP servers
@@ -118,6 +120,7 @@ Only **`tower-mcp`** is ready for it so far: it reads through a `TowerSource` in
 ```
 packages/menara-core/    shared library, not an MCP: envelope, IDs, privacy, clock, audit, tokens, seed
 packages/menara-agent/   the DeepSeek test driver (python -m menara_agent)
+packages/menara-demo/    a simple local demo page: map, circle search, trails, tool console (python -m menara_demo)
 servers/<name>-mcp/      one runnable MCP per folder: pyproject, README contract, src/, tests/
 data/scenario/           scripted scenarios (kuala_krai.yaml); data/menara.db is generated, gitignored
 tests/golden_trace/      the whole flood story, walked across separate server processes
@@ -152,5 +155,6 @@ uv run python -m mypy              # strict typing
 | know one server's exact tools and errors | `servers/<name>-mcp/README.md` |
 | see the policy rules in detail | [`servers/policy-mcp/README.md`](servers/policy-mcp/README.md) |
 | run a model against the servers | [`packages/menara-agent/README.md`](packages/menara-agent/README.md) |
+| see the servers in a browser | [`packages/menara-demo/README.md`](packages/menara-demo/README.md) |
 | see why a larger change was built the way it is | `docs/specs/` and `docs/plans/` |
 | follow the team process | [`playbook.md`](playbook.md) |

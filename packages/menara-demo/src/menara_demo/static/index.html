@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menara Demo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --text: #1d2330; --muted: #6a7384; --line: #dde1e8; --accent: #2457d6;
+    --up: #2e9e5b; --degraded: #e0a100; --down: #d64545; --unknown: #8a8f98; --poor: #e8742a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171d; --panel: #1c2028; --text: #e6e9ef; --muted: #98a1b3; --line: #2b313c; --accent: #7aa2ff; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; margin: 0; }
+  .banner { background: #fff3c4; color: #5b4500; border: 1px solid #e6cf7a; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+  .clock { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: auto; }
+  .clock .now { font-variant-numeric: tabular-nums; font-weight: 600; }
+  button, select, input, textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 460px; }
+  #map { min-height: 300px; background: #dfe5ee; }
+  aside { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .tabs button { flex: 1; border: 0; border-radius: 0; padding: 8px; background: transparent; border-bottom: 2px solid transparent; }
+  .tabs button.on { border-bottom-color: var(--accent); font-weight: 600; }
+  .pane { display: none; padding: 12px; overflow: auto; flex: 1; }
+  .pane.on { display: block; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 13px; }
+  th { text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 3px 6px; position: sticky; top: 0; background: var(--panel); }
+  td { padding: 3px 6px; border-bottom: 1px solid var(--line); }
+  tr.pick { cursor: pointer; }
+  tr.pick:hover td { background: rgba(36, 87, 214, 0.08); }
+  tr.on td { background: rgba(36, 87, 214, 0.16); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: baseline; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+  .warn { background: #fff3c4; color: #5b4500; border-color: #e6cf7a; }
+  .err { background: #fde3e3; color: #7a1d1d; border-color: #e8a7a7; }
+  h2 { font-size: 13px; margin: 10px 0 2px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; overflow: auto; max-height: 52vh; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+  textarea { width: 100%; min-height: 90px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  select { max-width: 100%; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; } aside { border-left: 0; border-top: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Menara Command Center</h1>
+  <span class="banner">DEMO &middot; SYNTHETIC DATA</span>
+  <div class="clock">
+    <span class="muted">Scenario time</span> <span class="now" id="clockNow">...</span>
+    <input id="tmin" type="number" min="-1440" max="720" step="1" style="width: 5.5em" aria-label="Scenario minute">
+    <button id="setClock" class="primary">Set</button>
+    <button data-t="0" title="T0: first ticket">0</button>
+    <button data-t="12" title="Storm complete">12</button>
+    <button data-t="150" title="After the morning commute">150</button>
+    <button data-t="360" title="Power restored">360</button>
+  </div>
+</header>
+<main>
+  <div id="map"></div>
+  <aside>
+    <div class="tabs">
+      <button id="tabArea" class="on">Map &amp; area</button>
+      <button id="tabConsole">Console</button>
+    </div>
+    <section id="paneArea" class="pane on">
+      <div class="row">
+        <button id="goKK">Kuala Krai (flood)</button>
+        <button id="goTawau">Tawau (commuters)</button>
+        <button id="goAll">All Malaysia</button>
+      </div>
+      <div class="row small muted">Click the map to circle a place. Radius <input id="radius" type="range" min="1" max="50" value="15" style="width: 9em"> <b id="radiusLabel">15</b> km</div>
+      <div id="areaMsg" class="box muted">Loading...</div>
+      <div id="areaOut"></div>
+    </section>
+    <section id="paneConsole" class="pane">
+      <div class="small muted" style="margin-bottom: 6px">Run any tool and see the raw response. The four human-only approval tools are not offered.</div>
+      <div class="row"><select id="toolSel" aria-label="Tool"></select> <button id="runTool" class="primary">Run</button></div>
+      <div id="toolDesc" class="small muted" style="margin-bottom: 6px"></div>
+      <textarea id="toolArgs" spellcheck="false" aria-label="Arguments as JSON"></textarea>
+      <div id="toolMeta" class="small muted" style="margin: 6px 0"></div>
+      <pre id="toolOut">Pick a tool and press Run.</pre>
+    </section>
+  </aside>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+const STATUS_COLOR = { UP: "#2e9e5b", DEGRADED: "#e0a100", DOWN: "#d64545", UNKNOWN: "#8a8f98" };
+const LABEL_COLOR = { GOOD: "#2e9e5b", FAIR: "#e0a100", POOR: "#e8742a", NO_SERVICE: "#d64545" };
+const $ = (selector) => document.querySelector(selector);
+
+function el(tag, props, ...kids) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props || {})) {
+    if (key === "class") node.className = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
+  }
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return node;
+}
+const dot = (color) => el("span", { class: "dot", style: "background:" + color });
+const fmt = (n) => (n === null || n === undefined ? "-" : Number(n).toLocaleString("en-US"));
+const when = (iso) => (iso ? iso.slice(5, 16).replace("T", " ") : "now");
+
+async function call(name, args) {
+  const response = await fetch("/api/call", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, arguments: args || {} }) });
+  const reply = await response.json();
+  if (!reply.ok) throw new Error(reply.error || response.statusText);
+  return reply;
+}
+
+// ---------- state ----------
+const state = { lat: null, lng: null, radius: 15, sequence: 0, chosen: null };
+let map = null, towerMarkers = {}, circleLayer = null, trailLayer = null, towerLayer = null;
+
+function setupMap() {
+  if (typeof L === "undefined") {
+    $("#map").append(el("div", { class: "box err", style: "margin:12px" }, "The map library could not load (it needs internet). The Console tab still works."));
+    return;
+  }
+  map = L.map("map", { preferCanvas: true }).setView([4.2, 108], 6);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+  towerLayer = L.layerGroup().addTo(map);
+  trailLayer = L.layerGroup().addTo(map);
+  map.on("click", (event) => place(event.latlng.lat, event.latlng.lng));
+}
+
+// ---------- clock ----------
+async function loadClock() {
+  const clock = await (await fetch("/api/clock")).json();
+  $("#clockNow").textContent = "t=" + clock.t_min + " · " + when(clock.as_of);
+  $("#tmin").value = clock.t_min;
+  return clock;
+}
+async function setClock(minute) {
+  const response = await fetch("/api/clock", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t_min: Number(minute) }) });
+  if (!response.ok) { message((await response.json()).error, "err"); return; }
+  await loadClock();
+  await loadTowers();
+  await runArea();
+}
+
+// ---------- towers on the map ----------
+async function loadTowers() {
+  if (!map) return;
+  const reply = await call("tower_list_in_bbox", { min_lat: 0, min_lng: 95, max_lat: 8, max_lng: 120, limit: 2000 });
+  towerLayer.clearLayers();
+  towerMarkers = {};
+  for (const tower of reply.result.data.towers) {
+    const marker = L.circleMarker([tower.lat, tower.lng], { radius: 4, weight: 1, color: STATUS_COLOR[tower.status] || STATUS_COLOR.UNKNOWN, fillOpacity: 0.75 });
+    marker.bindTooltip(tower.enodeb_name + " · " + tower.status + " · " + tower.town);
+    marker.addTo(towerLayer);
+    towerMarkers[tower.enodeb_name] = marker;
+  }
+}
+
+// ---------- area ----------
+function message(text, kind) {
+  const box = $("#areaMsg");
+  box.className = "box " + (kind || "muted");
+  box.textContent = text;
+  box.style.display = text ? "block" : "none";
+}
+
+function place(lat, lng) {
+  state.lat = lat; state.lng = lng; state.chosen = null;
+  if (map) {
+    if (circleLayer) circleLayer.remove();
+    circleLayer = L.circle([lat, lng], { radius: state.radius * 1000, color: "#2457d6", weight: 2, fillOpacity: 0.06 }).addTo(map);
+  }
+  trailLayer && trailLayer.clearLayers();
+  runArea();
+}
+
+async function runArea() {
+  if (state.lat === null) { message("Click the map to circle a place.", "muted"); $("#areaOut").replaceChildren(); return; }
+  const mine = ++state.sequence;
+  message("Loading...", "muted");
+  try {
+    const [towers, people] = await Promise.all([
+      call("tower_list_in_radius", { lat: state.lat, lng: state.lng, radius_km: state.radius }),
+      call("user_list_in_area", { lat: state.lat, lng: state.lng, radius_km: state.radius, limit: 200 }),
+    ]);
+    if (mine !== state.sequence) return;
+    renderArea(towers.result.data, people.result.data);
+  } catch (error) {
+    if (mine === state.sequence) message(error.message, "err");
+  }
+}
+
+function renderArea(towers, people) {
+  message("", "muted");
+  const inside = new Set(towers.towers.map((t) => t.enodeb_name));
+  for (const [name, marker] of Object.entries(towerMarkers)) marker.setStyle({ radius: inside.has(name) ? 7 : 4, weight: inside.has(name) ? 2 : 1 });
+  const byTower = Object.fromEntries(people.towers.map((t) => [t.enodeb_name, t]));
+  const out = $("#areaOut");
+  out.replaceChildren();
+
+  const down = towers.towers.filter((t) => t.status === "DOWN").length;
+  out.append(el("div", { class: "box" },
+    el("b", {}, towers.returned + " towers"), " in ", state.radius, " km",
+    down ? el("span", { style: "color:var(--down)" }, " (" + down + " DOWN)") : "",
+    el("div", { class: "small muted" }, people.withheld
+      ? "Subscribers withheld: fewer than 5 match (privacy)."
+      : fmt(people.subscribers_total) + " sampled subscribers (a synthetic sample) · about " + fmt(people.subscribers_est_total) + " estimated in total")));
+  if (towers.truncated) out.append(el("div", { class: "box warn small" }, "Showing the nearest towers only; lower the radius."));
+  out.append(el("div", { id: "trailOut" }));
+
+  out.append(el("h2", {}, "Towers"));
+  const towerRows = towers.towers.map((t) => {
+    const info = byTower[t.enodeb_name];
+    return el("tr", {}, el("td", {}, dot(STATUS_COLOR[t.status]), t.enodeb_name), el("td", {}, t.status), el("td", {}, t.distance_km.toFixed(1)), el("td", {}, info ? info.subscribers_sampled : "-"), el("td", {}, info ? fmt(info.subscribers_est) : "-"));
+  });
+  out.append(el("table", {}, el("tr", {}, ["Tower", "Status", "km", "Sample", "Est."].map((h) => el("th", {}, h))), towerRows));
+
+  out.append(el("h2", {}, "Subscribers (click one for the trail)"));
+  if (people.withheld || !people.subscribers.length) {
+    out.append(el("div", { class: "muted small" }, people.withheld ? "Withheld." : "No subscribers in this circle."));
+  } else {
+    const rows = people.subscribers.map((s) => el("tr", { class: "pick", "data-hash": s.msisdn_hash, onclick: () => showTrail(s.msisdn_hash) },
+      el("td", {}, s.msisdn_hash.slice(0, 8) + "…"), el("td", {}, s.enodeb_name),
+      el("td", {}, dot(LABEL_COLOR[s.latest_label] || "#8a8f98"), s.attached ? (s.latest_label || "-") : "detached"),
+      el("td", {}, s.cell_changes_24h)));
+    out.append(el("table", {}, el("tr", {}, ["Subscriber", "Tower", "Service", "Moves 24h"].map((h) => el("th", {}, h))), rows));
+    if (people.truncated) out.append(el("div", { class: "muted small" }, "Showing " + people.returned + " of " + fmt(people.subscribers_total) + " sampled subscribers."));
+  }
+  if (state.chosen) showTrail(state.chosen);
+}
+
+async function showTrail(hash) {
+  state.chosen = hash;
+  document.querySelectorAll("tr.pick").forEach((row) => row.classList.toggle("on", row.dataset.hash === hash));
+  const target = $("#trailOut");
+  if (!target) return;
+  target.replaceChildren(el("div", { class: "muted small" }, "Loading trail..."));
+  try {
+    const reply = await call("user_get_trail", { msisdn_hash: hash, window_min: 1440 });
+    const trail = reply.result.data;
+    target.replaceChildren(el("h2", {}, "Trail · " + hash.slice(0, 8) + "…"),
+      el("div", { class: "small muted" }, trail.moves + " moves · " + trail.distinct_towers + " towers · last 24 h from " + when(trail.window_start) + " (cell level only)"),
+      el("table", {}, el("tr", {}, ["#", "Tower", "From", "To", "Min"].map((h) => el("th", {}, h))),
+        trail.segments.map((s, i) => el("tr", {}, el("td", {}, i + 1), el("td", {}, s.enodeb_name), el("td", {}, when(s.arrived_at)), el("td", {}, s.left_at ? when(s.left_at) : "now"), el("td", {}, s.duration_min)))));
+    drawTrail(trail.segments);
+    target.scrollIntoView({ block: "nearest" });
+  } catch (error) {
+    target.replaceChildren(el("div", { class: "box err" }, error.message));
+  }
+}
+
+function drawTrail(segments) {
+  if (!map) return;
+  trailLayer.clearLayers();
+  const points = segments.map((s) => [s.cell_lat, s.cell_lng]);
+  if (points.length > 1) L.polyline(points, { color: "#7a3cff", weight: 3, opacity: 0.85 }).addTo(trailLayer);
+  segments.forEach((s, i) => {
+    L.circleMarker(points[i], { radius: 9, color: "#7a3cff", weight: 2, fillColor: s.current ? "#7a3cff" : "#ffffff", fillOpacity: 1 })
+      .bindTooltip("#" + (i + 1) + " " + s.enodeb_name + " " + when(s.arrived_at) + (s.current ? " (now)" : ""), { permanent: points.length <= 6 })
+      .addTo(trailLayer);
+  });
+  if (points.length > 1) map.fitBounds(L.latLngBounds(points).pad(0.4));
+  else if (points.length === 1) map.setView(points[0], Math.max(map.getZoom(), 10));
+}
+
+// ---------- presets and controls ----------
+async function preset(minute, lat, lng, radius, zoom) {
+  state.radius = radius; $("#radius").value = radius; $("#radiusLabel").textContent = radius;
+  if (minute !== null) { const clock = await loadClock(); if (clock.t_min !== minute) await setClockQuiet(minute); }
+  if (map && zoom) map.setView([lat, lng], zoom);
+  place(lat, lng);
+}
+async function setClockQuiet(minute) {
+  await fetch("/api/clock", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t_min: minute }) });
+  await loadClock();
+  await loadTowers();
+}
+
+$("#goKK").onclick = () => preset(12, 5.531, 102.197, 15, 10);
+$("#goTawau").onclick = () => preset(150, 4.214, 117.857, 10, 11);
+$("#goAll").onclick = () => { state.lat = null; state.chosen = null; if (circleLayer) circleLayer.remove(); trailLayer && trailLayer.clearLayers(); if (map) map.setView([4.2, 108], 6); runArea(); };
+$("#setClock").onclick = () => setClock($("#tmin").value);
+document.querySelectorAll(".clock button[data-t]").forEach((button) => (button.onclick = () => setClock(button.dataset.t)));
+let radiusTimer = null;
+$("#radius").oninput = (event) => {
+  state.radius = Number(event.target.value); $("#radiusLabel").textContent = state.radius;
+  if (circleLayer) circleLayer.setRadius(state.radius * 1000);
+  clearTimeout(radiusTimer); radiusTimer = setTimeout(runArea, 300);
+};
+
+// ---------- tabs and console ----------
+function tab(which) {
+  $("#tabArea").classList.toggle("on", which === "area"); $("#tabConsole").classList.toggle("on", which === "console");
+  $("#paneArea").classList.toggle("on", which === "area"); $("#paneConsole").classList.toggle("on", which === "console");
+  if (which === "console" && !tools.length) loadTools();
+}
+$("#tabArea").onclick = () => tab("area");
+$("#tabConsole").onclick = () => tab("console");
+
+let tools = [];
+const EXAMPLES = {
+  tower_get_status: { enodeb_name: "KKRI-0142" },
+  tower_list_in_radius: { lat: 5.531, lng: 102.197, radius_km: 10 },
+  tower_get_kpi: { enodeb_name: "KKRI-0143", window_min: 60 },
+  ticket_get_ticket: { ticket_id: "TK-88213" },
+  ticket_cluster_by_location: { ticket_id: "TK-88213" },
+  user_list_on_tower: { enodeb_name: "KKRI-0143" },
+  user_list_in_area: { lat: 5.531, lng: 102.197, radius_km: 10, limit: 20 },
+  ontology_blast_radius: { site: "KKRI-0142" },
+  grid_get_tower_power: { enodeb_name: "KKRI-0142" },
+  flood_get_gauge: { gauge_id: "GAUGE-KKRI-01" },
+  weather_get_rainfall: { lat: 5.531, lng: 102.197, window_min: 1440 },
+  policy_get_status: {},
+};
+function template(tool) {
+  if (EXAMPLES[tool.name]) return EXAMPLES[tool.name];
+  const out = {}, props = (tool.schema && tool.schema.properties) || {};
+  for (const key of (tool.schema && tool.schema.required) || []) {
+    const type = props[key] && props[key].type;
+    out[key] = type === "integer" || type === "number" ? 0 : type === "boolean" ? false : type === "array" ? [] : type === "object" ? {} : "";
+  }
+  return out;
+}
+async function loadTools() {
+  tools = await (await fetch("/api/tools")).json();
+  const select = $("#toolSel");
+  const groups = {};
+  for (const tool of tools) (groups[tool.name.split("_")[0]] ||= []).push(tool);
+  select.replaceChildren(...Object.entries(groups).map(([group, list]) => el("optgroup", { label: group }, list.map((tool) => el("option", { value: tool.name }, tool.name)))));
+  pickTool();
+}
+function pickTool() {
+  const tool = tools.find((t) => t.name === $("#toolSel").value);
+  if (!tool) return;
+  $("#toolDesc").textContent = tool.description;
+  $("#toolArgs").value = JSON.stringify(template(tool), null, 2);
+}
+$("#toolSel").onchange = pickTool;
+$("#runTool").onclick = async () => {
+  const out = $("#toolOut"), meta = $("#toolMeta");
+  let args;
+  try { args = JSON.parse($("#toolArgs").value || "{}"); } catch (error) { out.textContent = "The arguments are not valid JSON: " + error.message; return; }
+  meta.textContent = "Running..."; out.textContent = "";
+  try {
+    const reply = await call($("#toolSel").value, args);
+    meta.textContent = reply.ms + " ms · synthetic: " + (reply.result && reply.result.synthetic);
+    out.textContent = typeof reply.result === "string" ? reply.result : JSON.stringify(reply.result, null, 2);
+  } catch (error) {
+    meta.textContent = "Error"; out.textContent = error.message;
+  }
+};
+
+// ---------- start ----------
+(async function start() {
+  setupMap();
+  try {
+    await loadClock();
+    await loadTowers();
+    // Shareable scenes: #kk, #tawau, #tawau-trail (a commuter's trail) and #console
+    const scene = location.hash.slice(1);
+    if (scene.startsWith("tawau")) await preset(150, 4.214, 117.857, 10, 11);
+    else if (scene === "kk") await preset(12, 5.531, 102.197, 15, 10);
+    else await preset(null, 5.531, 102.197, 15, 10);
+    if (scene === "tawau-trail") {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const mover = [...document.querySelectorAll("tr.pick")].find((row) => row.lastChild.textContent !== "0");
+      if (mover) mover.click();
+    }
+    if (scene === "console") tab("console");
+  } catch (error) {
+    message("Could not reach the servers: " + error.message, "err");
+  }
+})();
+</script>
+</body>
+</html>

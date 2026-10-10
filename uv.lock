@@ -15,6 +15,7 @@ members = [
     "menara",
     "menara-agent",
     "menara-core",
+    "menara-demo",
     "ontology-mcp",
     "policy-mcp",
     "ran-mcp",
@@ -696,6 +697,7 @@ dev = [
     { name = "flood-mcp" },
     { name = "grid-mcp" },
     { name = "menara-agent" },
+    { name = "menara-demo" },
     { name = "mypy" },
     { name = "ontology-mcp" },
     { name = "policy-mcp" },
@@ -720,6 +722,7 @@ dev = [
     { name = "flood-mcp", editable = "servers/flood-mcp" },
     { name = "grid-mcp", editable = "servers/grid-mcp" },
     { name = "menara-agent", editable = "packages/menara-agent" },
+    { name = "menara-demo", editable = "packages/menara-demo" },
     { name = "mypy", specifier = ">=1.16" },
     { name = "ontology-mcp", editable = "servers/ontology-mcp" },
     { name = "policy-mcp", editable = "servers/policy-mcp" },
@@ -765,6 +768,27 @@ dependencies = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.11" },
     { name = "pyyaml", specifier = ">=6.0" },
+]
+
+[[package]]
+name = "menara-demo"
+version = "0.1.0"
+source = { editable = "packages/menara-demo" }
+dependencies = [
+    { name = "mcp", extra = ["cli"] },
+    { name = "menara-agent" },
+    { name = "menara-core" },
+    { name = "starlette" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mcp", extras = ["cli"], specifier = ">=1.9,<2" },
+    { name = "menara-agent", editable = "packages/menara-agent" },
+    { name = "menara-core", editable = "packages/menara-core" },
+    { name = "starlette", specifier = ">=0.40" },
+    { name = "uvicorn", specifier = ">=0.30" },
 ]
 
 [[package]]

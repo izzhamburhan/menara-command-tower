@@ -1,0 +1,23 @@
+[project]
+name = "menara-demo"
+version = "0.1.0"
+description = "A simple local web page that shows what the Menara MCP servers return (synthetic data, demo only)."
+requires-python = ">=3.13"
+dependencies = [
+    "menara-core",
+    "menara-agent",
+    "mcp[cli]>=1.9,<2",
+    "starlette>=0.40",
+    "uvicorn>=0.30",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/menara_demo"]
+
+[tool.uv.sources]
+menara-core = { workspace = true }
+menara-agent = { workspace = true }
