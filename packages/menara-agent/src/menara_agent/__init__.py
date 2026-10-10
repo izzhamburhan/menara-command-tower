@@ -1,0 +1,1 @@
+"""menara-agent: a small DeepSeek-driven test driver for the Menara MCP servers. All data is synthetic."""
