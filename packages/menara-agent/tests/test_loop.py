@@ -66,3 +66,44 @@ def test_a_tool_error_is_reported_to_the_model_and_the_loop_continues() -> None:
     tool_message = model.seen[1][-1]
     assert tool_message["role"] == "tool" and tool_message["content"].startswith("ERROR:")
     assert "tower is on fire" in tool_message["content"]
+    assert "tower is on fire" in tool_message["content"]
+
+# ---------- structured events for a UI ----------
+
+
+def run_with_events(model: ScriptedModel, runner: FakeRunner, max_steps: int = 10) -> tuple[str, list[dict[str, Any]]]:
+    events: list[dict[str, Any]] = []
+    final = asyncio.run(
+        run_agent(model, runner, "Investigate", TOOLS, max_steps, log=lambda _: None, on_event=events.append)
+    )
+    return final, events
+
+
+def test_events_cover_calls_results_and_model_text_in_order() -> None:
+    first = Reply(content="Checking the tower first.", tool_calls=[ToolCall("c1", "tower_get_status", {"enodeb_name": "KKRI-0142"})])
+    model = ScriptedModel([first, Reply(content="Done.", tool_calls=[])])
+    final, events = run_with_events(model, FakeRunner())
+    assert final == "Done."
+    assert [e["type"] for e in events] == ["say", "call", "result"]
+    assert events[0]["text"] == "Checking the tower first."
+    assert events[1] == {"type": "call", "step": 1, "name": "tower_get_status", "arguments": {"enodeb_name": "KKRI-0142"}}
+    assert events[2]["step"] == 1 and events[2]["ok"] is True and "DOWN" in events[2]["text"]
+
+
+def test_a_failing_tool_is_a_result_event_with_ok_false() -> None:
+    model = ScriptedModel([tool_reply(), Reply(content="Cannot say.", tool_calls=[])])
+    _, events = run_with_events(model, FakeRunner(fail=True))
+    result = [e for e in events if e["type"] == "result"][0]
+    assert result["ok"] is False and result["text"].startswith("ERROR:")
+
+
+def test_long_results_are_cut_for_events_but_not_for_the_model() -> None:
+    class Big(FakeRunner):
+        async def call(self, name: str, arguments: dict[str, Any]) -> str:
+            return "x" * 20000
+
+    model = ScriptedModel([tool_reply(), Reply(content="ok", tool_calls=[])])
+    _, events = run_with_events(model, Big())
+    text = [e for e in events if e["type"] == "result"][0]["text"]
+    assert len(text) < 20000 and text.endswith("...[cut]")
+    assert len(model.seen[1][-1]["content"]) == 20000

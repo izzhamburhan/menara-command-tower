@@ -144,3 +144,30 @@ def test_calls_without_a_token_are_untouched() -> None:
     runner, inner = _approved_runner([])
     asyncio.run(runner.call("tower_get_status", {"enodeb_name": "KKRI-0142"}))
     assert inner.calls[-1] == ("tower_get_status", {"enodeb_name": "KKRI-0142"})
+
+
+# ---------- an approval that waits (the demo page's buttons) ----------
+
+
+def test_an_awaitable_ask_human_is_awaited() -> None:
+    inner, asked = FakeInner(ASK), []
+
+    async def ask_later(summary: str) -> bool:
+        await asyncio.sleep(0)
+        asked.append(summary)
+        return True
+
+    runner = GatedRunner(inner, approver_key="the-key", ask_human=ask_later)
+    result = json.loads(asyncio.run(runner.call("policy_check_action", CHECK_ARGS)))
+    assert len(asked) == 1 and result["decision"] == "approved_by_human"
+    assert [c[0] for c in inner.calls] == ["policy_check_action", "policy_approve"]
+
+
+def test_an_awaitable_no_rejects() -> None:
+    inner = FakeInner(ASK)
+
+    async def no(_: str) -> bool:
+        return False
+
+    result = json.loads(asyncio.run(GatedRunner(inner, "k", no).call("policy_check_action", CHECK_ARGS)))
+    assert result["decision"] == "rejected_by_human" and inner.calls[-1][0] == "policy_reject"
