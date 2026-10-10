@@ -20,9 +20,9 @@ Every tool returns `{synthetic: true, as_of, data, evidence[], warnings[]}`.
 | --- | --- | --- |
 | `user_get_serving_cell` | `msisdn_hash` | `serving_cell`, `enodeb_name`, `attached`, `detached_since`, cell-level `cell_lat`/`cell_lng`, plan, segment, `home_fibre`. If not attached, `serving_cell` is the last known cell and a warning says so |
 | `user_get_experience` | `msisdn_hash, window_min=120` (5-1440) | `points[]` (score 0-100, label GOOD/FAIR/POOR/NO_SERVICE, throughput, drop events, RSRP), `latest`, `summary` |
-| `user_list_in_area` | `lat, lng, radius_km` (0.1-100)`, limit=200` (1-500) | Subscribers whose serving tower is in the circle now: `towers[]` (`subscribers_sampled`, `subscribers_est`), `subscribers[]` (hash, cell, `attached`, `latest_label`), `subscribers_total`, `returned`, `truncated`, `withheld` |
+| `user_list_in_area` | `lat, lng, radius_km` (0.1-100)`, limit=200` (1-500) | Subscribers whose serving tower is in the circle now: `towers[]` (`subscribers_sampled`, `subscribers_est`), `subscribers[]` (hash, cell, `attached`, `latest_label`, `cell_changes_24h`), `subscribers_total`, `subscribers_est_total`, `returned`, `truncated`, `withheld` |
 | `user_list_on_tower` | `enodeb_name, limit=200` | The same shape for one tower |
-| `user_get_trail` | `msisdn_hash, window_min=1440` (5-2880) | `segments[]` oldest first (`serving_cell`, `enodeb_name`, cell-level `cell_lat`/`cell_lng`, `arrived_at`, `left_at`, `duration_min` inside the window, `current`), `moves`, `distinct_towers` |
+| `user_get_trail` | `msisdn_hash, window_min=1440` (5-2880) | `window_start`, `segments[]` oldest first (`serving_cell`, `enodeb_name`, cell-level `cell_lat`/`cell_lng`, `arrived_at`, `left_at`, `duration_min` inside the window, `current`), `moves`, `distinct_towers` |
 
 Get the hash from a ticket's `customer_ref` (ticket-mcp) or from a subscriber list.
 

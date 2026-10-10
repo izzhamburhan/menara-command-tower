@@ -52,6 +52,8 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
         "towers with sampled and estimated counts, and subscriber rows (msisdn_hash, cell, attached, latest "
         "experience label). The subscribers are a SYNTHETIC SAMPLE; use subscribers_est for population size. "
         "Fewer than 5 matches are withheld."
+        "experience label, cell_changes_24h). The subscribers are a SYNTHETIC SAMPLE; use subscribers_est_total for the "
+        "estimated population (do not add the per-tower numbers yourself). Fewer than 5 matches are withheld."
     )
     def user_list_in_area(lat: float, lng: float, radius_km: float, limit: int = 200) -> dict[str, Any]:
         return run(lambda conn: tools.list_in_area(conn, lat, lng, radius_km, limit))
@@ -66,6 +68,8 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
     @mcp.tool(
         description="The cells one subscriber has been on over the last window_min minutes (5-2880), oldest first, "
         "with arrival and leave times. Cell level only. Get the msisdn_hash from a ticket or a subscriber list."
+        "with arrival and leave times. window_start says when the window begins, so the first segment may have arrived "
+        "earlier than that. Cell level only. Get the msisdn_hash from a ticket or a subscriber list."
     )
     def user_get_trail(msisdn_hash: str, window_min: int = 1440) -> dict[str, Any]:
         return run(lambda conn: tools.get_trail(conn, msisdn_hash, window_min))

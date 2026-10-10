@@ -98,3 +98,10 @@ def test_trail_validation_and_unknown_subscriber(conn: sqlite3.Connection) -> No
         tools.get_trail(conn, "not-a-hash")
     with pytest.raises(NotFoundError):
         tools.get_trail(conn, "0" * 16)
+        tools.get_trail(conn, "0" * 16)
+
+def test_the_trail_says_when_its_window_begins(conn: sqlite3.Connection, set_clock: Callable[[int], None]) -> None:
+    set_clock(12)
+    assert tools.get_trail(conn, _stayer(conn)).data.window_start.startswith("2026-11-13T07:12")
+    set_clock(480)
+    assert tools.get_trail(conn, _stayer(conn), window_min=60).data.window_start.startswith("2026-11-14T14:00")

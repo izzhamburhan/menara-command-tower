@@ -61,6 +61,7 @@ class AreaSubscriber(BaseModel):
     cell_lng: float
     attached: bool
     latest_label: ExperienceLabel | None
+    cell_changes_24h: int
 
 
 class TowerSubscribers(BaseModel):
@@ -80,6 +81,7 @@ class SubscriberList(BaseModel):
     towers: list[TowerSubscribers]
     subscribers: list[AreaSubscriber]
     subscribers_total: int | None
+    subscribers_est_total: int | None
     returned: int
     truncated: bool
     withheld: bool
@@ -100,6 +102,7 @@ class TrailSegment(BaseModel):
 class Trail(BaseModel):
     msisdn_hash: str
     window_min: int
+    window_start: str
     segments: list[TrailSegment]
     moves: int
     distinct_towers: int

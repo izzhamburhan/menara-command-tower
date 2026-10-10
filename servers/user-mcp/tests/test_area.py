@@ -124,3 +124,47 @@ def test_tower_validation_and_unknown_tower(conn: sqlite3.Connection) -> None:
         tools.list_on_tower(conn, "KKRI-0142", limit=0)
     with pytest.raises(NotFoundError):
         tools.list_on_tower(conn, "ZZZZ-9999")
+
+# ---------- follow-ups from the live runs ----------
+
+
+def test_the_estimate_total_is_the_sum_over_the_towers(conn: sqlite3.Connection, set_clock: Callable[[int], None]) -> None:
+    set_clock(12)
+    data = tools.list_in_area(conn, *KK_CENTRE, radius_km=5).data
+    assert data.subscribers_est_total == sum(t.subscribers_est or 0 for t in data.towers) > 980
+    assert tools.list_on_tower(conn, "KKRI-0142").data.subscribers_est_total == 980
+
+
+def test_the_estimate_total_is_null_when_withheld_and_zero_when_empty(
+    conn: sqlite3.Connection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert tools.list_in_area(conn, 0.0, 0.0, radius_km=1).data.subscribers_est_total == 0
+    monkeypatch.setattr(tools, "MIN_AGGREGATE_COUNT", 1000)
+    assert tools.list_on_tower(conn, "KKRI-0142").data.subscribers_est_total is None
+
+
+def _expected_changes(conn: sqlite3.Connection, digest: str, now: int) -> int:
+    return int(
+        conn.execute(
+            "SELECT COUNT(*) FROM subscriber_cell_visit WHERE msisdn_hash = ? AND start_min <= ? AND start_min > ? "
+            "AND start_min > (SELECT MIN(start_min) FROM subscriber_cell_visit WHERE msisdn_hash = ?)",
+            (digest, now, now - 1440, digest),
+        ).fetchone()[0]
+    )
+
+
+def test_cell_changes_in_24h_is_zero_for_stayers_and_follows_the_clock_for_commuters(
+    conn: sqlite3.Connection, set_clock: Callable[[int], None]
+) -> None:
+    digest, home, _ = _mover(conn)
+    for minute in (0, 200, 480):
+        set_clock(minute)
+        rows = {s.msisdn_hash: s for s in tools.list_on_tower(conn, home, limit=500).data.subscribers}
+        if digest in rows:
+            assert rows[digest].cell_changes_24h == _expected_changes(conn, digest, minute)
+    set_clock(200)
+    flooded = tools.list_on_tower(conn, "KKRI-0142").data.subscribers
+    assert flooded and all(s.cell_changes_24h == 0 for s in flooded)
+    work = _mover(conn)[2]
+    on_work = {s.msisdn_hash: s for s in tools.list_on_tower(conn, work, limit=500).data.subscribers}
+    assert on_work[digest].cell_changes_24h == _expected_changes(conn, digest, 200) > 0
