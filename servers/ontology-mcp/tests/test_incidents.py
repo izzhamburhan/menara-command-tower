@@ -132,3 +132,12 @@ def test_ontology_cannot_write_other_domains_tables(conn: sqlite3.Connection) ->
         conn.execute("UPDATE ticket SET status = 'RESOLVED'")
     with pytest.raises(sqlite3.DatabaseError, match="not authorized"):
         conn.execute("DELETE FROM tower_state")
+
+
+def test_a_rejected_status_move_says_what_is_allowed(conn: sqlite3.Connection) -> None:
+    inc = _create(conn).data
+    with pytest.raises(InvalidInputError, match=r"allowed: MITIGATING, RESOLVED"):
+        tools.update_incident(conn, inc.incident_id, "OPEN")
+    tools.update_incident(conn, inc.incident_id, "RESOLVED")
+    with pytest.raises(InvalidInputError, match=r"allowed: none \(already RESOLVED\)"):
+        tools.update_incident(conn, inc.incident_id, "MITIGATING")

@@ -446,7 +446,8 @@ def update_incident(
     if status not in STATUSES:
         raise InvalidInputError(f"status must be one of {sorted(STATUSES)}")
     if status not in TRANSITIONS[row["status"]]:
-        raise InvalidInputError(f"Cannot move incident from {row['status']} to {status}")
+        allowed = ", ".join(sorted(TRANSITIONS[row["status"]])) or f"none (already {row['status']})"
+        raise InvalidInputError(f"Cannot move incident from {row['status']} to {status} (allowed: {allowed})")
     notes: list[dict[str, str]] = json.loads(row["notes"])
     stamp = clock.as_of(conn)
     if note is not None:

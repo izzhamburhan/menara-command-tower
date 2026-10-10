@@ -26,3 +26,10 @@ def test_tool_call_returns_a_synthetic_envelope(db_file: Path) -> None:
     payload = result[1] if isinstance(result, tuple) else result
     assert payload["synthetic"] is True
     assert payload["data"]["towers_at_risk"] == 11
+
+
+def test_incident_tool_descriptions_state_the_rules_a_model_would_trip_on(db_file: Path) -> None:
+    described = {t.name: t.description or "" for t in asyncio.run(build_server(db_file).list_tools())}
+    assert "5-500 characters" in described["ontology_create_incident"]
+    update = described["ontology_update_incident"]
+    assert "must differ" in update and "no way back" in update
