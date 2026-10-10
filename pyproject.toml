@@ -23,6 +23,7 @@ dev = [
     "twin-mcp",
     "ran-mcp",
     "drone-mcp",
+    "menara-agent",
 ]
 
 [tool.uv]
@@ -32,6 +33,7 @@ package = false
 members = ["packages/*", "servers/*"]
 
 [tool.uv.sources]
+menara-agent = { workspace = true }
 drone-mcp = { workspace = true }
 ran-mcp = { workspace = true }
 twin-mcp = { workspace = true }
@@ -57,8 +59,8 @@ ignore = ["E501"]
 strict = true
 python_version = "3.13"
 exclude = ["tests/"]
-files = ["packages/menara-core/src", "servers/*/src"]
-mypy_path = ["packages/menara-core/src", "servers/tower-mcp/src", "servers/ticket-mcp/src", "servers/user-mcp/src", "servers/weather-mcp/src", "servers/grid-mcp/src", "servers/flood-mcp/src", "servers/sites-mcp/src", "servers/ontology-mcp/src", "servers/policy-mcp/src", "servers/twin-mcp/src", "servers/ran-mcp/src", "servers/drone-mcp/src"]
+files = ["packages/menara-core/src", "packages/menara-agent/src", "servers/*/src"]
+mypy_path = ["packages/menara-core/src", "packages/menara-agent/src", "servers/tower-mcp/src", "servers/ticket-mcp/src", "servers/user-mcp/src", "servers/weather-mcp/src", "servers/grid-mcp/src", "servers/flood-mcp/src", "servers/sites-mcp/src", "servers/ontology-mcp/src", "servers/policy-mcp/src", "servers/twin-mcp/src", "servers/ran-mcp/src", "servers/drone-mcp/src"]
 explicit_package_bases = true
 
 [tool.pytest.ini_options]
