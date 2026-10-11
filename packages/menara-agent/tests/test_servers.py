@@ -26,9 +26,9 @@ def test_the_environment_for_servers_drops_the_secrets() -> None:
     assert env["PATH"] == "/bin" and env["MENARA_SIGNING_KEY"] == "shared-with-action-servers"
 
 
-def test_load_config_reads_all_twelve_servers_from_mcp_json() -> None:
+def test_load_config_reads_all_thirteen_servers_from_mcp_json() -> None:
     specs = load_config(REPO_ROOT / ".mcp.json")
-    assert len(specs) == 12 and {"tower", "policy", "drone", "ran"} <= set(specs)
+    assert len(specs) == 13 and {"tower", "policy", "drone", "ran", "usage"} <= set(specs)
     assert specs["tower"].command == "uv" and specs["tower"].args[-1] == "tower_mcp"
 
 

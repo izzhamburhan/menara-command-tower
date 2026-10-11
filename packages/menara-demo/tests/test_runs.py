@@ -141,11 +141,11 @@ def test_a_live_run_streams_calls_results_and_one_final(make: Callable[[list[Rep
     assert started.status_code == 200 and started.json()["run_id"]
     state = wait_for(client, finished)
     types = [e["type"] for e in state["events"]]
-    assert types == ["say", "call", "result", "map", "final"] and state["status"] == "done"
+    assert types == ["say", "call", "result", "map", "heal", "final"] and state["status"] == "done"
     assert state["events"][-1]["text"] == "KKRI-0142 is down."
     assert client.get("/api/clock").json()["t_min"] == 20  # the run started the scenario clock where asked
     later = client.get("/api/agent/events", params={"since": 2}).json()
-    assert [e["type"] for e in later["events"]] == ["result", "map", "final"] and later["next"] == 5
+    assert [e["type"] for e in later["events"]] == ["result", "map", "heal", "final"] and later["next"] == 6
 
 
 def test_the_human_approves_with_a_button_and_the_model_gets_the_token(
@@ -250,3 +250,56 @@ def test_effects_are_built_from_the_full_result_not_the_shortened_event_text(
     events = wait_for(client, finished)["events"]
     shown = next(e for e in events if e["type"] == "result")["text"]
     assert len(shown) < 20000 and any(e["type"] == "map" for e in events)
+    assert len(shown) < 20000 and any(e["type"] == "map" for e in events)
+
+def tilt_call(call_id: str) -> Reply:
+    changes = [{"enodeb_name": "KKRI-0143", "tilt_delta_deg": 4.0}]
+    return Reply(None, [ToolCall(call_id, "ran_tilt_cells", {"changes": changes, "policy_token": "t"})])
+
+
+def test_a_heal_event_follows_the_result_and_map_events(make: Callable[[list[Reply] | None], TestClient]) -> None:
+    client = make([status_call(), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Investigate", "clock": 20})
+    events = wait_for(client, finished)["events"]
+    kinds = [e["type"] for e in events]
+    assert kinds.index("heal") == kinds.index("map") + 1
+    heal = next(e for e in events if e["type"] == "heal")
+    assert heal["step"] == 1 and heal["stage"] == "detect" and heal["attempt"] == 0 and "KKRI-0142" in heal["label"]
+
+
+def test_the_second_tilt_is_attempt_2(make: Callable[[list[Reply] | None], TestClient]) -> None:
+    client = make([tilt_call("a"), tilt_call("b"), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Fix", "clock": 20})
+    heals = [e for e in wait_for(client, finished)["events"] if e["type"] == "heal"]
+    assert [(h["stage"], h["attempt"]) for h in heals] == [("apply", 1), ("apply", 2)]
+
+
+def test_a_human_decision_is_an_approve_event(make: Callable[[list[Reply] | None], TestClient]) -> None:
+    client = make([drone_check(), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Drone", "clock": 20})
+    wait_for(client, waiting)
+    client.post("/api/agent/decision", json={"approve": True})
+    heals = [(e["stage"], e["label"]) for e in wait_for(client, finished)["events"] if e["type"] == "heal"]
+    assert ("approve", "Policy: a human approved") in heals
+    assert ("approve", "Human approved") in heals
+
+
+def test_a_failing_stage_builder_does_not_break_the_run(
+    make: Callable[[list[Reply] | None], TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("bad shape")
+
+    monkeypatch.setattr("menara_demo.heal.StageTracker.observe", boom)
+    client = make([status_call(), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Investigate", "clock": 20})
+    state = wait_for(client, finished)
+    assert state["status"] == "done" and not [e for e in state["events"] if e["type"] == "heal"]
+
+
+def test_the_heal_state_route_answers_even_when_the_servers_have_nothing(make: Callable[[list[Reply] | None], TestClient]) -> None:
+    reply = make([]).get("/api/heal/state")
+    assert reply.status_code == 200
+    body = reply.json()
+    assert body["ok"] is True and body["failed_tower"] == "KKRI-0142" and body["threshold"] == 85.0
+    assert body["watched"] == [] and body["changes"] == [] and body["incident"] is None and "clock_min" in body

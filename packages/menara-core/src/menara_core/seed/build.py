@@ -14,6 +14,7 @@ from menara_core.seed.movement import build_movement
 from menara_core.seed.people import build_people
 from menara_core.seed.schema import SCHEMA
 from menara_core.seed.sites import build_malls, build_sites
+from menara_core.seed.usage import build_usage
 
 DEFAULT_TOWER_COUNT = 1200
 DEFAULT_SEED = 42
@@ -143,6 +144,7 @@ def build(
         build_context(conn, rng, scenario, everything)
         build_sites(conn, rng, scenario, everything)
         build_malls(conn, seed, scenario, everything)  # own random stream
+        build_usage(conn, seed, everything)  # own random stream
         build_actions(conn, rng, scenario, everything)
         build_movement(conn, seed, scenario)  # last, with its own random stream, so older tables are unchanged
         conn.commit()
@@ -153,7 +155,7 @@ def build(
                 "subscriber", "subscriber_state", "subscriber_experience", "subscriber_cell_visit", "ticket",
                 "weather_station", "weather_obs", "grid_feeder", "grid_feeder_tower", "grid_feeder_state",
                 "flood_gauge", "flood_reading", "flood_extent", "critical_site", "tower_subscribers",
-                "policy_setting", "ran_script", "drone", "drone_finding",
+                "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share",
             )
         }
     finally:

@@ -17,14 +17,17 @@ from typing import Any
 
 from menara_agent.loop import ChatClient
 from menara_agent.tools import HIDDEN_TOOLS, ToolInfo
-from menara_core import clock
+from menara_core import clock, settings
 from menara_core.db import connect
+from menara_core.reset import reset_runtime_state
+from menara_core.scenario import load_scenario
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 
 from menara_demo.app_types import Hub, HubFactory
+from menara_demo.heal import heal_state
 from menara_demo.runs import RunManager
 from menara_demo.trail_story import (
     DEFAULT_WINDOW_MIN,
@@ -115,12 +118,15 @@ def create_app(
             result = raw
         return JSONResponse({"ok": True, "result": result, "ms": round((time.perf_counter() - started) * 1000)})
 
-    def read_clock() -> JSONResponse:
+    def read_clock_body() -> dict[str, Any]:
         conn = connect(db_file)
         try:
-            return JSONResponse({"t_min": clock.now_min(conn), "as_of": clock.as_of(conn)})
+            return {"t_min": clock.now_min(conn), "as_of": clock.as_of(conn)}
         finally:
             conn.close()
+
+    def read_clock() -> JSONResponse:
+        return JSONResponse(read_clock_body())
 
     async def clock_route(request: Request) -> Response:
         if request.method == "GET":
@@ -226,6 +232,20 @@ def create_app(
             return _bad("Nothing is waiting for a decision", 409)
         return JSONResponse({"ok": True})
 
+    async def heal_route(request: Request) -> Response:
+        now = read_clock_body()
+        state = await heal_state(request.app.state.hub, now["t_min"], now["as_of"])
+        return JSONResponse({"ok": True, **state})
+
+    async def reset(request: Request) -> Response:
+        manager = runs(request)
+        if manager.running:
+            return _bad("A run is in progress: cancel it first.", 409)
+        scenario = load_scenario(settings.default_scenario_path())
+        deleted = reset_runtime_state(db_file, scenario)
+        manager.clear()
+        return JSONResponse({"ok": True, "deleted": deleted, "clock": read_clock_body()})
+
     async def agent_cancel(request: Request) -> Response:
         if not runs(request).cancel():
             return _bad("No run is in progress", 409)
@@ -244,6 +264,8 @@ def create_app(
             Route("/api/agent/events", agent_events),
             Route("/api/agent/decision", agent_decision, methods=["POST"]),
             Route("/api/agent/cancel", agent_cancel, methods=["POST"]),
+            Route("/api/heal/state", heal_route),
+            Route("/api/reset", reset, methods=["POST"]),
         ],
         lifespan=lifespan,
     )

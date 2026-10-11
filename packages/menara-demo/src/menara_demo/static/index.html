@@ -9,97 +9,162 @@
 <style>
   :root {
     color-scheme: dark;
-    --bg: #080d1a; --panel: #101a30; --panel2: #162341; --text: #e8eefc; --muted: #9fb0cf; --line: #263556;
+    --bg: #070c18; --panel: #0f182c; --panel2: #16223f; --raise: #1c2a4d; --text: #eaf0ff; --muted: #a3b3d1; --line: #263556;
     --accent: #38e1ff; --accent2: #a66bff; --up: #2ee59d; --degraded: #ffc83d; --down: #ff4d6d; --info: #5aa9ff; --unknown: #8a93a8; --poor: #ff8a3d;
-    --glass: rgba(14, 22, 42, 0.84);
+    --glass: rgba(13, 21, 40, 0.86);
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+    --fs-xs: 11px; --fs-sm: 12px; --fs: 13px; --fs-lg: 15px; --fs-xl: 22px;
+    --r-sm: 8px; --r: 12px; --r-lg: 16px;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
-  body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+  body { font: var(--fs)/1.45 var(--font); background: var(--bg); color: var(--text); overflow: hidden; font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
   #map { position: fixed; inset: 0; background: var(--bg); }
-  .glass { background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+  .glass { background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line); box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
+  svg.ico { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-  header { position: fixed; z-index: 1000; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 14px; border-radius: 14px; }
-  header h1 { font-size: 16px; margin: 0; letter-spacing: .04em; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .live { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--up); margin-right: 8px; box-shadow: 0 0 10px var(--up); animation: blink 2s infinite; }
-  .banner { background: rgba(255, 200, 61, 0.12); color: var(--degraded); border: 1px solid rgba(255, 200, 61, 0.5); border-radius: 999px; padding: 2px 12px; font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+  header { position: fixed; z-index: 1000; top: var(--s3); left: var(--s3); right: var(--s3); display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); align-items: center; padding: var(--s2) var(--s4); border-radius: var(--r-lg); }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand h1 { font-size: var(--fs-lg); font-weight: 700; margin: 0; letter-spacing: .03em; }
+  .brand h1 span { color: var(--muted); font-weight: 500; }
+  .mark { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: linear-gradient(135deg, #1b8fb3, #6b3fd1); box-shadow: 0 0 14px rgba(56, 225, 255, 0.35); }
+  .mark svg { width: 14px; height: 14px; stroke: #fff; }
+  .live { width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 10px var(--up); animation: blink 2s infinite; }
+  .banner { background: rgba(255, 200, 61, 0.1); color: var(--degraded); border: 1px solid rgba(255, 200, 61, 0.45); border-radius: 999px; padding: 2px 12px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .08em; }
   .clock { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: auto; }
-  .clock .now { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); text-shadow: 0 0 12px rgba(56, 225, 255, 0.5); }
-  button, select, input, textarea { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; }
-  button { cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .1s; }
-  button:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 12px rgba(56, 225, 255, 0.3); }
+  .clock .now { font-weight: 700; color: var(--accent); font-family: var(--mono); font-size: var(--fs); }
+  .clock label { color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .08em; }
+  button, select, input, textarea { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 5px 11px; }
+  button { cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s, transform .1s; display: inline-flex; align-items: center; gap: 6px; }
+  button:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56, 225, 255, 0.12); }
   button:active:not(:disabled) { transform: translateY(1px); }
   button:disabled { opacity: .45; cursor: default; }
-  button.primary { background: linear-gradient(135deg, #1b8fb3, #6b3fd1); border-color: transparent; color: #fff; font-weight: 600; }
+  button.primary { background: linear-gradient(135deg, #1b8fb3, #5b3fd1); border-color: transparent; color: #fff; font-weight: 600; }
+  button.ghost { background: transparent; color: var(--muted); }
+  button.danger { background: var(--down); border-color: transparent; color: #1a0610; font-weight: 700; }
   input[type=range] { padding: 0; accent-color: var(--accent); }
 
-  #statsStrip { position: fixed; z-index: 999; top: 66px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100vw - 500px); }
-  .chip { padding: 6px 14px; border-radius: 12px; min-width: 92px; }
-  .chip b { display: block; font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .chip span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-  .chip.up b { color: var(--up); text-shadow: 0 0 12px rgba(46, 229, 157, 0.5); }
+  #statsStrip { position: fixed; z-index: 999; top: 68px; left: var(--s3); display: flex; flex-wrap: wrap; gap: var(--s2); max-width: calc(100vw - 500px); }
+  .chip { padding: 7px 14px; border-radius: var(--r); min-width: 96px; }
+  .chip b { display: block; font-size: var(--fs-xl); font-weight: 700; line-height: 1.1; }
+  .chip span { font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .chip.up b { color: var(--up); }
   .chip.deg b { color: var(--degraded); }
-  .chip.down b { color: var(--down); text-shadow: 0 0 12px rgba(255, 77, 109, 0.6); }
-  .chip.info b { color: var(--info); }
+  .chip.down b { color: var(--down); }
+  .chip.info b { color: var(--info); font-size: 18px; line-height: 1.3; }
   .chip.down.alarm { animation: alarm 1.6s infinite; }
 
-  #dock { position: fixed; z-index: 1000; top: 132px; right: 12px; bottom: 12px; width: 440px; border-radius: 16px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-  .tabs { display: flex; border-bottom: 1px solid var(--line); }
-  .tabs button { flex: 1; border: 0; border-radius: 0; padding: 10px 8px; background: transparent; border-bottom: 2px solid transparent; color: var(--muted); }
-  .tabs button.on { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; box-shadow: none; }
-  .pane { display: none; padding: 12px; overflow: auto; flex: 1; }
+  #dock { position: fixed; z-index: 1000; top: 136px; right: var(--s3); bottom: var(--s3); width: 448px; border-radius: var(--r-lg); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 var(--s1); }
+  .tabs button { flex: 1; justify-content: center; border: 0; border-radius: 0; padding: 11px 6px; background: transparent; border-bottom: 2px solid transparent; color: var(--muted); font-size: var(--fs-sm); font-weight: 600; }
+  .tabs button:hover:not(:disabled) { box-shadow: none; color: var(--text); }
+  .tabs button.on { border-bottom-color: var(--accent); color: var(--text); }
+  .pane { display: none; padding: var(--s4); overflow: auto; flex: 1; }
   .pane.on { display: block; }
-  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: var(--s2); }
   .muted { color: var(--muted); }
-  .small { font-size: 12px; }
-  table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 13px; }
-  th { text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 3px 6px; position: sticky; top: -12px; background: var(--panel); }
-  td { padding: 3px 6px; border-bottom: 1px solid var(--line); }
+  .small { font-size: var(--fs-sm); }
+  .lead { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 var(--s3); max-width: 62ch; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 var(--s3); font-size: var(--fs); }
+  th { text-align: left; font-weight: 600; color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); padding: 4px 6px; position: sticky; top: calc(var(--s4) * -1); background: var(--panel); }
+  td { padding: 5px 6px; border-bottom: 1px solid var(--line); }
   tr.pick { cursor: pointer; }
-  tr.pick:hover td { background: rgba(56, 225, 255, 0.08); }
-  tr.on td { background: rgba(56, 225, 255, 0.18); }
-  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: baseline; box-shadow: 0 0 8px currentColor; }
-  .box { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; background: rgba(255, 255, 255, 0.02); }
+  tr.pick:hover td { background: rgba(56, 225, 255, 0.07); }
+  tr.on td { background: rgba(56, 225, 255, 0.16); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; box-shadow: 0 0 8px currentColor; }
+  .box { border: 1px solid var(--line); border-radius: var(--r); padding: var(--s2) var(--s3); margin-bottom: var(--s3); background: rgba(255, 255, 255, 0.025); }
   .warn { background: rgba(255, 200, 61, 0.1); color: #ffe08a; border-color: rgba(255, 200, 61, 0.5); }
   .err { background: rgba(255, 77, 109, 0.12); color: #ffb3c0; border-color: rgba(255, 77, 109, 0.5); }
-  h2 { font-size: 12px; margin: 12px 0 2px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-  pre { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); border-radius: 8px; padding: 8px; overflow: auto; max-height: 52vh; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
-  textarea { width: 100%; min-height: 90px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  h2 { font-size: var(--fs-xs); margin: var(--s4) 0 var(--s1); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+  pre { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); border-radius: var(--r-sm); padding: var(--s2); overflow: auto; max-height: 52vh; font: var(--fs-sm) var(--mono); white-space: pre-wrap; word-break: break-word; }
+  textarea { width: 100%; min-height: 90px; font: var(--fs-sm) var(--mono); }
   select { max-width: 100%; }
 
-  .step { padding: 6px 10px; animation: slidein .3s ease-out; }
+  .step { padding: 8px 12px; animation: slidein .3s ease-out; }
   .step.has-map { cursor: pointer; }
   .step.has-map:hover { border-color: var(--accent); }
-  .step.ok { border-left: 4px solid var(--up); }
-  .step.bad { border-left: 4px solid var(--down); }
+  .step.ok { border-left: 3px solid var(--up); }
+  .step.bad { border-left: 3px solid var(--down); }
   .step .name { font-weight: 600; }
-  .step .where { float: right; font-size: 11px; color: var(--accent); }
-  .step .args { color: var(--muted); font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-word; }
+  .step .where { float: right; font-size: var(--fs-xs); color: var(--accent); }
+  .step .args { color: var(--muted); font: var(--fs-sm) var(--mono); word-break: break-word; }
   .step details pre { max-height: 220px; margin: 4px 0 0; }
-  .step summary { cursor: pointer; font-size: 12px; color: var(--muted); }
-  .say { font-size: 13px; margin: 4px 2px 8px; padding-left: 8px; border-left: 3px solid var(--accent2); animation: slidein .3s ease-out; }
+  .step summary { cursor: pointer; font-size: var(--fs-sm); color: var(--muted); }
+  .say { font-size: var(--fs); margin: 4px 2px var(--s2); padding-left: var(--s2); border-left: 3px solid var(--accent2); animation: slidein .3s ease-out; }
   .final { white-space: pre-wrap; }
-  .decide { display: flex; gap: 8px; margin-top: 6px; }
+  .decide { display: flex; gap: var(--s2); margin-top: 6px; }
   .story { white-space: pre-wrap; }
-  textarea.task { min-height: 70px; font-family: inherit; font-size: 13px; }
+  textarea.task { min-height: 70px; font: var(--fs) var(--font); }
 
-  .badge { display: inline-block; flex: none; white-space: nowrap; min-width: 20px; text-align: center; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 6px; margin-right: 6px; background: var(--panel2); border: 1px solid var(--line); }
+  .badge { display: inline-block; flex: none; white-space: nowrap; min-width: 20px; text-align: center; font-size: var(--fs-xs); font-weight: 700; border-radius: 6px; padding: 1px 6px; margin-right: 6px; background: var(--panel2); border: 1px solid var(--line); }
   .badge.home { color: var(--info); } .badge.weekday { color: var(--degraded); } .badge.weekend { color: var(--accent2); }
-  .routine { display: flex; gap: 6px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .routine { display: flex; gap: 6px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: var(--fs); }
 
-  #legend { position: fixed; z-index: 999; left: 12px; bottom: 28px; padding: 8px 12px; border-radius: 12px; font-size: 12px; color: var(--muted); display: grid; gap: 3px; }
+  /* what people use here */
+  .usage { padding: var(--s3); }
+  .usage header { position: static; background: none; border: 0; box-shadow: none; padding: 0; margin-bottom: var(--s2); display: flex; align-items: center; justify-content: space-between; backdrop-filter: none; }
+  .usage h3 { margin: 0; font-size: var(--fs); font-weight: 700; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 2px 10px; font-size: var(--fs-sm); background: transparent; color: var(--muted); }
+  .seg button[aria-pressed=true] { background: var(--raise); color: var(--text); }
+  .app { display: grid; grid-template-columns: 22px 106px 1fr 44px; gap: var(--s2); align-items: center; padding: 3px 0; font-size: var(--fs); }
+  .app .glyph { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: 800; color: #07101f; background: var(--c); }
+  .app .bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+  .app .bar i { display: block; height: 100%; border-radius: 4px; background: var(--c); transition: width .5s ease; }
+  .app .val { text-align: right; color: var(--muted); font-size: var(--fs-sm); }
+  .cats { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: var(--s3) 0 6px; }
+  .cats i { display: block; background: var(--c); }
+  .legend-row { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--fs-xs); color: var(--muted); }
+  .legend-row b { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--c); margin-right: 5px; }
+
+  /* self-heal */
+  #healStages { list-style: none; margin: var(--s3) 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s3) 0; }
+  .stage { position: relative; text-align: center; font-size: var(--fs-xs); color: var(--muted); padding-top: 34px; }
+  .stage::before { content: attr(data-n); position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--panel2); border: 1.5px solid var(--line); font-weight: 700; font-size: var(--fs-sm); color: var(--muted); z-index: 1; }
+  .stage::after { content: ""; position: absolute; top: 13px; left: calc(50% + 16px); right: calc(-50% + 16px); height: 2px; background: var(--line); }
+  .stage:nth-child(4n)::after { display: none; }
+  .stage.done::before { content: "\2713"; background: rgba(46, 229, 157, 0.16); border-color: var(--up); color: var(--up); }
+  .stage.done::after { background: var(--up); }
+  .stage.active::before { background: rgba(56, 225, 255, 0.18); border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px rgba(56, 225, 255, 0.14), 0 0 16px rgba(56, 225, 255, 0.4); animation: breathe 1.6s ease-in-out infinite; }
+  .stage.fail::before { content: "\21BA"; background: rgba(255, 77, 109, 0.16); border-color: var(--down); color: var(--down); }
+  .stage.active, .stage.done { color: var(--text); }
+  .stage .att { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: var(--raise); color: var(--text); font-weight: 700; }
+  #healNow { min-height: 20px; font-size: var(--fs); margin: 0 0 var(--s3); padding: 6px 10px; border-left: 3px solid var(--accent); background: rgba(56, 225, 255, 0.06); border-radius: 0 var(--r-sm) var(--r-sm) 0; color: var(--text); }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s2); margin-bottom: var(--s3); }
+  .tile { padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--line); background: rgba(255, 255, 255, 0.025); }
+  .tile b { display: block; font-size: 18px; line-height: 1.2; }
+  .tile span { font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .tile.good b { color: var(--up); } .tile.bad b { color: var(--down); }
+  #healChart { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: var(--r); background: rgba(0, 0, 0, 0.2); }
+  #healChart text { fill: var(--muted); font: 10px var(--font); }
+  #healChart .lbl { fill: var(--text); font-weight: 600; }
+  #healResult { margin: var(--s3) 0 0; font-size: var(--fs); }
+  .empty { text-align: center; color: var(--muted); padding: var(--s5) var(--s4); border: 1px dashed var(--line); border-radius: var(--r); font-size: var(--fs-sm); }
+
+  dialog { color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s5); max-width: 420px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6); }
+  dialog::backdrop { background: rgba(4, 8, 18, 0.7); backdrop-filter: blur(3px); }
+  dialog h3 { margin: 0 0 var(--s2); font-size: var(--fs-lg); }
+  dialog p { margin: 0 0 var(--s4); color: var(--muted); }
+  dialog .actions { display: flex; gap: var(--s2); justify-content: flex-end; }
+  #toast { position: fixed; z-index: 1200; left: 50%; bottom: 28px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; padding: 10px 16px; border-radius: var(--r); max-width: min(560px, calc(100vw - 32px)); transition: opacity .25s, transform .25s; }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  #legend { position: fixed; z-index: 999; left: var(--s3); bottom: 28px; padding: var(--s2) var(--s3); border-radius: var(--r); font-size: var(--fs-sm); color: var(--muted); display: grid; gap: 3px; }
   #legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
-  #replayBar { position: fixed; z-index: 1000; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 8px 14px; border-radius: 14px; display: none; gap: 10px; align-items: center; min-width: 340px; max-width: calc(100vw - 500px); }
+  #replayBar { position: fixed; z-index: 1000; left: 50%; bottom: 28px; transform: translateX(-50%); padding: var(--s2) var(--s4); border-radius: var(--r-lg); display: none; gap: 10px; align-items: center; min-width: 340px; max-width: calc(100vw - 500px); }
   #replayBar.on { display: flex; }
   #replayBar input[type=range] { flex: 1; }
-  #replayTime { font-variant-numeric: tabular-nums; font-size: 12px; min-width: 150px; color: var(--accent); }
+  #replayTime { font: var(--fs-sm) var(--mono); min-width: 150px; color: var(--accent); }
 
   /* map effects */
   .fx { position: relative; width: 0; height: 0; animation: fadein .5s ease-out; }
   .fx .core { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; background: var(--c); box-shadow: 0 0 14px var(--c), 0 0 4px var(--c) inset; }
   .fx .ring { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--c); animation: pulse 2s ease-out infinite; }
   .fx .ring.b { animation-delay: 1s; }
-  .fx .tag { position: absolute; left: 14px; top: -10px; white-space: nowrap; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 8px; background: rgba(8, 13, 26, 0.9); border: 1px solid var(--c); color: var(--text); }
+  .fx .tag { position: absolute; left: 14px; top: -10px; white-space: nowrap; font-size: var(--fs-xs); font-weight: 600; padding: 1px 8px; border-radius: 8px; background: rgba(8, 13, 26, 0.92); border: 1px solid var(--c); color: var(--text); }
   .fx.pin .core { width: 18px; height: 18px; left: -9px; top: -9px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #07101f; box-shadow: 0 0 10px var(--c); }
   .fx.pin .ring, .fx.pin .tag { display: none; }
   .fx.pin:hover .tag { display: block; z-index: 5; }
@@ -109,10 +174,10 @@
   path.fx-ring { animation: dash 1.4s linear infinite; }
   path.fx-link, path.trail-line { animation: dash 1.1s linear infinite; }
   path.fx-area { animation: fadein .8s ease-out; }
-  .leaflet-top.leaflet-left { top: 120px; }
-  .leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) brightness(.82) contrast(.92) saturate(.55); }  /* the light map, turned into a dark one */
+  .leaflet-top.leaflet-left { top: 128px; }
   .leaflet-container { background: var(--bg); font: inherit; }
-  .leaflet-tooltip { background: rgba(8, 13, 26, 0.92); color: var(--text); border: 1px solid var(--line); box-shadow: none; }
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) brightness(.82) contrast(.92) saturate(.55); }  /* the light map, turned into a dark one */
+  .leaflet-tooltip { background: rgba(8, 13, 26, 0.94); color: var(--text); border: 1px solid var(--line); box-shadow: none; }
   .leaflet-tooltip-top:before { border-top-color: var(--line); }
   .leaflet-control-attribution { background: rgba(8, 13, 26, 0.7) !important; color: var(--muted) !important; }
   .leaflet-control-attribution a { color: var(--muted) !important; }
@@ -124,31 +189,46 @@
   @keyframes slidein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   @keyframes blink { 50% { opacity: .35; } }
   @keyframes alarm { 50% { box-shadow: 0 0 22px rgba(255, 77, 109, 0.7); } }
+  @keyframes breathe { 50% { box-shadow: 0 0 0 7px rgba(56, 225, 255, 0.06), 0 0 22px rgba(56, 225, 255, 0.5); } }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
   }
   @media (max-width: 900px) {
-    #dock { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 50vh; }
-    #statsStrip { max-width: calc(100vw - 24px); top: 104px; }
-    .chip { min-width: 72px; padding: 4px 10px; }
+    header { padding: 6px 12px; }
+    .clock { margin-left: 0; }
+    .clock .hide-sm { display: none; }
+    .clock button[data-t], .banner, #resetDemo .txt { display: none; }
+    .leaflet-control-zoom { display: none; }
+    .brand .live { display: none; }
+    #dock { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 52vh; }
+    #statsStrip { max-width: calc(100vw - 24px); top: 118px; }
+    .chip { min-width: 70px; padding: 4px 10px; }
+    .chip b { font-size: 17px; }
     #legend { display: none; }
-    #replayBar { bottom: calc(50vh + 16px); max-width: calc(100vw - 24px); min-width: 0; width: calc(100vw - 24px); }
+    #replayBar { bottom: calc(52vh + 16px); max-width: calc(100vw - 24px); min-width: 0; width: calc(100vw - 24px); }
+    .tabs button span { display: none; }
+    .app { grid-template-columns: 22px 92px 1fr 40px; }
   }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <header class="glass">
-  <h1><span class="live"></span>Menara Command Center</h1>
+  <div class="brand">
+    <span class="mark"><svg class="ico" viewBox="0 0 16 16"><path d="M2 12 L6 5 L9 10 L11 7 L14 12"/></svg></span>
+    <h1>Menara <span>Command Center</span></h1>
+    <span class="live" title="Demo is running"></span>
+  </div>
   <span class="banner">DEMO &middot; SYNTHETIC DATA</span>
   <div class="clock">
-    <span class="muted">Scenario time</span> <span class="now" id="clockNow">...</span>
+    <label class="hide-sm" for="tmin">Scenario time</label> <span class="now" id="clockNow">...</span>
     <input id="tmin" type="number" min="-1440" max="720" step="1" style="width: 5.5em" aria-label="Scenario minute">
     <button id="setClock" class="primary">Set</button>
     <button data-t="0" title="T0: first ticket">0</button>
     <button data-t="12" title="Storm complete">12</button>
     <button data-t="150" title="After the morning commute">150</button>
     <button data-t="360" title="Power restored">360</button>
+    <button id="resetDemo" class="ghost" title="Remove everything created while playing and start clean"><svg class="ico" viewBox="0 0 16 16"><path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5V5h2.5"/></svg><span class="txt">Reset demo</span></button>
   </div>
 </header>
 <div id="statsStrip" aria-label="Network summary">
@@ -160,10 +240,11 @@
 </div>
 
 <aside id="dock" class="glass">
-  <div class="tabs">
-    <button id="tabArea" class="on">Map &amp; area</button>
-    <button id="tabStory">Story</button>
-    <button id="tabConsole">Console</button>
+  <div class="tabs" role="tablist">
+    <button id="tabArea" class="on" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M8 14s4.5-4 4.5-7.5a4.5 4.5 0 0 0-9 0C3.5 10 8 14 8 14z"/><circle cx="8" cy="6.5" r="1.6"/></svg><span>Map &amp; area</span></button>
+    <button id="tabStory" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg><span>Story</span></button>
+    <button id="tabHeal" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M8 13.5S2.5 10 2.5 6a3 3 0 0 1 5.5-1.6A3 3 0 0 1 13.5 6c0 4-5.5 7.5-5.5 7.5z"/></svg><span>Self-heal</span></button>
+    <button id="tabConsole" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M2.5 4l4 4-4 4M8 12.5h5.5"/></svg><span>Console</span></button>
   </div>
   <section id="paneArea" class="pane on">
     <div class="row">
@@ -176,7 +257,7 @@
     <div id="areaOut"></div>
   </section>
   <section id="paneStory" class="pane">
-    <div class="small muted" style="margin-bottom: 6px">Watch an agent work the flood incident through the real MCP servers, and see it on the map. <b>Run live</b> lets DeepSeek decide each step. <b>Replay</b> follows a fixed script (no key needed). When policy needs a human, Approve or Reject appears in the timeline. Every run changes the demo data; re-seed for a clean start.</div>
+    <p class="lead">Watch an agent work the flood incident through the real MCP servers, and see it on the map. <b>Run live</b> lets DeepSeek decide each step. <b>Replay</b> follows a fixed script (no key needed). When policy needs a human, Approve or Reject appears in the timeline. Every run changes the demo data: use <b>Reset demo</b> to start clean.</p>
     <div class="row">
       <button data-preset="full">Full incident</button>
       <button data-preset="investigate">Investigate only</button>
@@ -193,8 +274,26 @@
     <div id="storyStatus" class="small muted" style="margin: 4px 0 8px"></div>
     <div id="timeline"></div>
   </section>
+  <section id="paneHeal" class="pane">
+    <p class="lead">The network heals itself, with a human in the loop: spot the overloaded neighbours, simulate a fix, get approval, apply it, <b>verify with the KPIs</b>, and roll back if it did not help. Watch each stage light up and the load fall on the chart.</p>
+    <div class="row">
+      <button id="healReplay" class="primary">Run self-heal (Replay)</button>
+      <button id="healLive">Run live</button>
+      <button id="healCancel" disabled>Cancel</button>
+    </div>
+    <ol id="healStages" aria-label="Stages of the self-healing loop"></ol>
+    <div id="healNow" role="status" aria-live="polite">Not started. Press Run self-heal.</div>
+    <div class="tiles">
+      <div class="tile" id="tilePeak"><b>-</b><span>Peak load</span></div>
+      <div class="tile" id="tileNow"><b>-</b><span>Load now</span></div>
+      <div class="tile" id="tileAttempts"><b>0</b><span>Tilts tried</span></div>
+      <div class="tile" id="tileIncident"><b>none</b><span>Incident</span></div>
+    </div>
+    <svg id="healChart" viewBox="0 0 420 230" role="img" aria-label="Load of the overloaded neighbour towers over scenario time, with the overload line and each tilt marked"></svg>
+    <p id="healResult" class="muted">The chart fills in as the loop runs.</p>
+  </section>
   <section id="paneConsole" class="pane">
-    <div class="small muted" style="margin-bottom: 6px">Run any tool and see the raw response. The four human-only approval tools are not offered.</div>
+    <p class="lead">Run any tool and see the raw response. The four human-only approval tools are not offered.</p>
     <div class="row"><select id="toolSel" aria-label="Tool"></select> <button id="runTool" class="primary">Run</button></div>
     <div id="toolDesc" class="small muted" style="margin-bottom: 6px"></div>
     <textarea id="toolArgs" spellcheck="false" aria-label="Arguments as JSON"></textarea>
@@ -218,6 +317,15 @@
   <span id="replayTime"></span>
 </div>
 
+<dialog id="resetDialog" aria-labelledby="resetTitle">
+  <form method="dialog">
+    <h3 id="resetTitle">Reset the demo?</h3>
+    <p>This removes everything created while playing (incidents, approvals, tilts, drone missions, notes and the audit log), restores the policy settings and puts the clock back to the start. The map data is not touched and the servers keep running.</p>
+    <div class="actions"><button value="cancel">Cancel</button><button value="reset" class="danger" id="resetConfirm">Reset</button></div>
+  </form>
+</dialog>
+<div id="toast" class="glass" role="status" aria-live="polite"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 "use strict";
@@ -225,6 +333,9 @@ const STATUS_COLOR = { UP: "#2ee59d", DEGRADED: "#ffc83d", DOWN: "#ff4d6d", UNKN
 const LABEL_COLOR = { GOOD: "#2ee59d", FAIR: "#ffc83d", POOR: "#ff8a3d", NO_SERVICE: "#ff4d6d" };
 const TONE = { ok: "#2ee59d", warn: "#ffc83d", bad: "#ff4d6d", info: "#5aa9ff" };
 const GLYPH = { mall: "M", school: "S", hospital: "H", clinic: "+", police: "P", fire: "F", enterprise: "E", tower: "T", drone: "D", ticket: "!" };
+const CATEGORY_COLOR = { SHORT_VIDEO: "#ff6fb1", SOCIAL: "#5aa9ff", MESSAGING: "#2ee59d", VIDEO_STREAMING: "#ff8a3d", MUSIC: "#a66bff", GAMING: "#ffc83d", COMMERCE: "#ffa8c8", MOBILITY: "#38e1ff" };
+const SERIES_COLOR = ["#38e1ff", "#a66bff", "#ffc83d", "#ff7ab6", "#2ee59d"];
+const STAGES = [["detect", "Detect"], ["diagnose", "Diagnose"], ["simulate", "Simulate"], ["approve", "Approve"], ["apply", "Apply"], ["verify", "Verify"], ["rollback", "Roll back"], ["recover", "Recover"]];
 const REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (selector) => document.querySelector(selector);
 
@@ -236,6 +347,12 @@ function el(tag, props, ...kids) {
     else node.setAttribute(key, value);
   }
   for (const kid of kids.flat()) if (kid !== null && kid !== undefined) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  return node;
+}
+function svgEl(tag, attrs, text) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [key, value] of Object.entries(attrs || {})) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
   return node;
 }
 const dot = (color) => el("span", { class: "dot", style: "background:" + color + ";color:" + color });
@@ -259,8 +376,17 @@ async function call(name, args) {
   return body;
 }
 
+let toastTimer = null;
+function toast(text, kind) {
+  const box = $("#toast");
+  box.textContent = text;
+  box.className = "glass on " + (kind || "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.classList.remove("on"), 6000);
+}
+
 // ---------- state ----------
-const state = { lat: null, lng: null, radius: 15, sequence: 0, chosen: null };
+const state = { lat: null, lng: null, radius: 15, sequence: 0, chosen: null, usageRank: "users" };
 let map = null, svg = null, towerMarkers = {}, circleLayer = null, trailLayer = null, towerLayer = null, downLayer = null, placeLayer = null, fxLayer = null;
 
 function setupMap() {
@@ -409,6 +535,7 @@ function renderArea(towers, people) {
       ? "Subscribers withheld: fewer than 5 match (privacy)."
       : fmt(people.subscribers_total) + " sampled subscribers (a synthetic sample) · about " + fmt(people.subscribers_est_total) + " estimated in total")));
   if (towers.truncated) out.append(el("div", { class: "box warn small" }, "Showing the nearest towers only; lower the radius."));
+  out.append(el("div", { id: "usageCard", class: "box usage" }));
   out.append(el("div", { id: "trailOut" }));
 
   out.append(el("h2", {}, "Towers"));
@@ -429,7 +556,43 @@ function renderArea(towers, people) {
     out.append(el("table", {}, el("tr", {}, ["Subscriber", "Tower", "Service", "Moves 24h"].map((h) => el("th", {}, h))), rows));
     if (people.truncated) out.append(el("div", { class: "muted small" }, "Showing " + people.returned + " of " + fmt(people.subscribers_total) + " sampled subscribers."));
   }
+  loadUsage();
   if (state.chosen) showTrail(state.chosen);
+}
+
+// ---------- what people use here (synthetic estimate) ----------
+async function loadUsage() {
+  const box = $("#usageCard");
+  if (!box || state.lat === null) return;
+  const mine = state.sequence;
+  try {
+    const reply = await call("usage_top_apps_in_area", { lat: state.lat, lng: state.lng, radius_km: state.radius, rank_by: state.usageRank, limit: 5 });
+    if (mine !== state.sequence || !$("#usageCard")) return;
+    renderUsage(box, reply.result.data);
+  } catch (error) {
+    box.replaceChildren();
+    box.style.display = "none";
+  }
+}
+function renderUsage(box, data) {
+  box.style.display = "block";
+  const toggle = el("div", { class: "seg", id: "usageToggle", role: "group", "aria-label": "Rank apps by" },
+    ["users", "data"].map((rank) => el("button", { "aria-pressed": String(state.usageRank === rank), onclick: () => { state.usageRank = rank; loadUsage(); } }, rank === "users" ? "Users" : "Data")));
+  const head = el("header", {}, el("h3", {}, "What people use here"), toggle);
+  if (data.withheld || !data.apps.length) {
+    box.replaceChildren(head, el("div", { class: "muted small" }, data.withheld ? "Withheld: fewer than 5 estimated users in this circle." : "No towers in this circle."));
+    return;
+  }
+  const key = state.usageRank === "users" ? "reach_pct" : "data_share_pct";
+  const top = Math.max(...data.apps.map((a) => a[key]), 1);
+  const rows = data.apps.map((a) => el("div", { class: "app", style: "--c:" + (CATEGORY_COLOR[a.category] || "#8a93a8") },
+    el("span", { class: "glyph" }, a.name[0]), el("span", {}, "#" + a.rank + " " + a.name),
+    el("span", { class: "bar" }, el("i", { style: "width:" + Math.max(2, (a[key] / top) * 100) + "%" })), el("span", { class: "val" }, a[key] + "%")));
+  const cats = data.categories.slice(0, 5);
+  const catBar = el("div", { class: "cats", role: "img", "aria-label": "Share of data by category" }, cats.map((c) => el("i", { style: "--c:" + (CATEGORY_COLOR[c.category] || "#8a93a8") + ";width:" + c.data_share_pct + "%", title: c.category + " " + c.data_share_pct + "%" })));
+  const legend = el("div", { class: "legend-row" }, cats.map((c) => el("span", { style: "--c:" + (CATEGORY_COLOR[c.category] || "#8a93a8") }, el("b"), c.category.replace("_", " ").toLowerCase() + " " + Math.round(c.data_share_pct) + "%")));
+  box.replaceChildren(head, ...rows, catBar, legend,
+    el("div", { class: "small muted", style: "margin-top: 8px" }, "Synthetic estimate (invented numbers, not real traffic). " + String(data.hour).padStart(2, "0") + ":00 by the scenario clock; busiest hour " + String(data.busiest_hour).padStart(2, "0") + ":00. " + data.towers_counted + " towers counted; bars show " + (state.usageRank === "users" ? "the share of people online with the app" : "the share of data") + "."));
 }
 
 // ---------- a subscriber's trail, its replay and its routine ----------
@@ -598,6 +761,126 @@ function focusStep(step) {
   else if (entry.bounds) { const padded = entry.bounds.pad(0.2); REDUCE ? map.fitBounds(padded, { maxZoom: 12 }) : map.flyToBounds(padded, { duration: 1.1, maxZoom: 12 }); }
 }
 
+// ---------- the self-healing loop ----------
+const heal = { stages: {}, active: null, timer: null };
+function resetHeal() {
+  heal.stages = {}; heal.active = null;
+  renderHealStages();
+  $("#healNow").textContent = "Not started. Press Run self-heal.";
+  $("#healResult").textContent = "The chart fills in as the loop runs.";
+  for (const id of ["#tilePeak", "#tileNow"]) { $(id + " b").textContent = "-"; $(id).className = "tile"; }
+  $("#tileAttempts b").textContent = "0"; $("#tileIncident b").textContent = "none";
+  drawHealChart(null);
+}
+function renderHealStages() {
+  const list = $("#healStages");
+  list.replaceChildren(...STAGES.map(([id, name], i) => {
+    const s = heal.stages[id] || {};
+    const cls = ["stage", s.done ? "done" : "", heal.active === id ? "active" : "", id === "rollback" && s.done ? "fail" : ""].join(" ").replace(/\s+/g, " ").trim();
+    return el("li", { class: cls, "data-n": String(i + 1), "data-stage": id }, name, s.attempt ? el("span", { class: "att" }, "x" + s.attempt) : null);
+  }));
+}
+function onHeal(event) {
+  const s = heal.stages[event.stage] || (heal.stages[event.stage] = {});
+  if (heal.active && heal.active !== event.stage) (heal.stages[heal.active] || {}).done = true;
+  heal.active = event.stage;
+  s.done = event.stage === "recover";
+  if (event.stage === "rollback") s.attempt = (s.attempt || 0) + 1;  // how many times it rolled back
+  else if (event.attempt) s.attempt = event.attempt;
+  renderHealStages();
+  $("#healNow").textContent = event.label;
+  refreshHeal();
+}
+function finishHeal() {
+  if (heal.active) (heal.stages[heal.active] || {}).done = true;
+  heal.active = null;
+  renderHealStages();
+}
+function refreshHeal() {
+  clearTimeout(heal.timer);
+  heal.timer = setTimeout(async () => {
+    try {
+      const { response, body } = await getJson("/api/heal/state");
+      if (!response.ok) throw new Error(body.error);
+      drawHealChart(body);
+      summariseHeal(body);
+    } catch (error) { $("#healResult").textContent = error.message; }
+  }, 250);
+}
+// A tilt that was undone soon after it was applied did not help; one undone hours later was just restored when power returned.
+const isRollback = (change) => change.status === "REVERTED" && change.reverted_min !== null && change.reverted_min - change.applied_min <= 30;
+function summariseHeal(data) {
+  const names = data.watched;
+  let peak = 0, last = null;
+  for (const name of names) {
+    const points = data.series[name] || [];
+    const sinceT0 = points.filter((p) => p.t_min >= 0);
+    if (sinceT0.length) peak = Math.max(peak, ...sinceT0.map((p) => p.prb));
+    if (points.length) last = Math.max(last === null ? 0 : last, points[points.length - 1].prb);
+  }
+  const over = last !== null && last >= data.threshold;
+  $("#tilePeak b").textContent = names.length ? Math.round(peak) + "%" : "-";
+  $("#tileNow b").textContent = last === null ? "-" : Math.round(last) + "%";
+  $("#tileNow").className = "tile " + (last === null ? "" : over ? "bad" : "good");
+  $("#tileAttempts b").textContent = String(data.changes.length);
+  $("#tileIncident b").textContent = data.incident ? data.incident.status : "none";
+  const rolled = data.changes.filter(isRollback).length;
+  if (!names.length) { $("#healResult").textContent = "No overloaded neighbours yet. Move the clock to 12 or press Run self-heal."; return; }
+  if (!data.changes.length) $("#healResult").textContent = names.join(", ") + " are overloaded (peak " + Math.round(peak) + "%). Waiting for the loop to act.";
+  else if (over) $("#healResult").textContent = rolled ? "A tilt did not help enough and was rolled back (" + rolled + " so far); trying again." : "A tilt is applied: verifying the load.";
+  else $("#healResult").textContent = "Healed: load fell from " + Math.round(peak) + "% to " + Math.round(last) + "% after " + data.changes.length + " tilt" + (data.changes.length === 1 ? "" : "s") + (rolled ? ", including " + rolled + " rolled back" : "") + ".";
+}
+function drawHealChart(data) {
+  const chart = $("#healChart");
+  const W = 420, H = 230, L0 = 34, R0 = 12, T0 = 14, B0 = 26;
+  chart.replaceChildren();
+  const x0 = L0, x1 = W - R0, y0 = T0, y1 = H - B0;
+  const yOf = (v) => y0 + ((100 - v) / 100) * (y1 - y0);
+  for (const v of [0, 25, 50, 75, 100]) {
+    chart.append(svgEl("line", { x1: x0, x2: x1, y1: yOf(v), y2: yOf(v), stroke: "#263556", "stroke-width": 1 }), svgEl("text", { x: x0 - 6, y: yOf(v) + 3, "text-anchor": "end" }, v + "%"));
+  }
+  const thr = data ? data.threshold : 85;
+  chart.append(svgEl("line", { x1: x0, x2: x1, y1: yOf(thr), y2: yOf(thr), stroke: "#ff4d6d", "stroke-width": 1.2, "stroke-dasharray": "5 4" }),
+    svgEl("text", { x: x1 - 2, y: yOf(thr) - 4, "text-anchor": "end", fill: "#ff8aa0", style: "fill:#ff8aa0" }, "Overload " + thr + "%"));
+  if (!data || !data.watched.length) {
+    chart.append(svgEl("text", { x: W / 2, y: H / 2, "text-anchor": "middle" }, "No overloaded neighbours to show yet"));
+    return;
+  }
+  const all = data.watched.flatMap((n) => data.series[n]);
+  let tmin = Math.min(...all.map((p) => p.t_min)), tmax = Math.max(...all.map((p) => p.t_min), tmin + 1);
+  // Zoom on the episode: from a while before the first tilt to a while after the last one (or from the start of the overload).
+  const applied = data.changes.map((c) => c.applied_min).filter((v) => v !== null);
+  if (applied.length) { tmin = Math.max(tmin, Math.min(...applied) - 90); tmax = Math.max(tmin + 30, Math.min(tmax, Math.max(...applied) + 90)); }
+  else {
+    const over = all.filter((p) => p.prb >= thr).map((p) => p.t_min);
+    if (over.length) tmin = Math.max(tmin, Math.min(...over) - 30);
+  }
+  const xOf = (t) => x0 + ((t - tmin) / (tmax - tmin)) * (x1 - x0);
+  const ticks = 4;
+  for (let i = 0; i <= ticks; i++) {
+    const t = Math.round(tmin + ((tmax - tmin) * i) / ticks);
+    chart.append(svgEl("text", { x: xOf(t), y: H - 8, "text-anchor": i === 0 ? "start" : i === ticks ? "end" : "middle" }, "t=" + t));
+  }
+  data.changes.forEach((c, i) => {
+    const a = Math.max(tmin, c.applied_min), b = c.reverted_min === null ? tmax : Math.min(tmax, c.reverted_min);
+    const failed = isRollback(c);
+    const color = failed ? "#ffc83d" : "#2ee59d";
+    chart.append(svgEl("rect", { x: xOf(a), y: y0, width: Math.max(2, xOf(b) - xOf(a)), height: y1 - y0, fill: color, "fill-opacity": 0.09 }),
+      svgEl("line", { x1: xOf(a), x2: xOf(a), y1: y0, y2: y1, stroke: color, "stroke-width": 1.2 }),
+      svgEl("text", { x: xOf(a) + 3, y: y0 + 10 + (i % 2) * 11, class: "lbl", style: "fill:" + color }, "Tilt " + (i + 1) + (failed ? " rolled back" : "")));
+    if (failed && c.reverted_min !== null) chart.append(svgEl("line", { x1: xOf(b), x2: xOf(b), y1: y0, y2: y1, stroke: "#ff4d6d", "stroke-width": 1.2, "stroke-dasharray": "3 3" }));
+  });
+  data.watched.forEach((name, i) => {
+    const color = SERIES_COLOR[i % SERIES_COLOR.length];
+    const points = data.series[name].filter((p) => p.t_min >= tmin && p.t_min <= tmax);
+    if (!points.length) return;
+    chart.append(svgEl("polyline", { points: points.map((p) => xOf(p.t_min).toFixed(1) + "," + yOf(p.prb).toFixed(1)).join(" "), fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }));
+    const end = points[points.length - 1];
+    chart.append(svgEl("circle", { cx: xOf(end.t_min), cy: yOf(end.prb), r: 3.5, fill: color }),
+      svgEl("text", { x: Math.min(xOf(end.t_min) - 6, x1 - 2), y: yOf(end.prb) - 7 - i * 11, "text-anchor": "end", class: "lbl", style: "fill:" + color }, name));
+  });
+}
+
 // ---------- presets and controls ----------
 async function preset(minute, lat, lng, radius, zoom) {
   state.radius = radius; $("#radius").value = radius; $("#radiusLabel").textContent = radius;
@@ -619,18 +902,48 @@ $("#radius").oninput = (event) => {
   clearTimeout(radiusTimer); radiusTimer = setTimeout(runArea, 300);
 };
 
+// ---------- reset ----------
+const REMOVED_NAMES = { incident: "incident", twin_simulation: "simulation", ran_change: "RAN change", drone_mission: "drone mission", approval: "approval", audit_log: "audit entry", ticket_note: "ticket note", ticket_resolution: "ticket resolution" };
+function describeRemoved(deleted) {
+  const parts = Object.entries(REMOVED_NAMES).filter(([table]) => deleted[table]).map(([table, name]) => deleted[table] + " " + name + (deleted[table] === 1 ? "" : "s"));
+  return parts.length ? "Removed " + parts.join(", ") + "." : "Nothing to remove: the demo was already clean.";
+}
+function resetViews() {
+  clearEffects(); stopReplay();
+  $("#timeline").replaceChildren();
+  run.cards = {}; run.since = 0;
+  storyNote("");
+  resetHeal();
+  trailLayer && trailLayer.clearLayers(); placeLayer && placeLayer.clearLayers();
+  setRunning(false);
+  loadClock(); loadTowers(); refreshStats(); runArea();
+}
+async function doReset() {
+  try {
+    const { response, body } = await postJson("/api/reset");
+    if (!response.ok) { toast(body.error, "err"); return; }
+    resetViews();
+    toast(describeRemoved(body.deleted) + " The clock is back at t=" + body.clock.t_min + ".");
+  } catch (error) { toast(error.message, "err"); }
+}
+$("#resetDemo").onclick = () => $("#resetDialog").showModal();
+$("#resetDialog").addEventListener("close", () => { if ($("#resetDialog").returnValue === "reset") doReset(); });
+
 // ---------- tabs and console ----------
 function tab(which) {
-  for (const name of ["area", "story", "console"]) {
+  for (const name of ["area", "story", "heal", "console"]) {
     const cap = name[0].toUpperCase() + name.slice(1);
     $("#tab" + cap).classList.toggle("on", which === name);
     $("#pane" + cap).classList.toggle("on", which === name);
+    $("#tab" + cap).setAttribute("aria-selected", String(which === name));
   }
   if (which === "console" && !tools.length) loadTools();
-  if (which === "story") storyStatus().then(resumeRun);
+  if (which === "story" || which === "heal") storyStatus().then(resumeRun);
+  if (which === "heal") refreshHeal();
 }
 $("#tabArea").onclick = () => tab("area");
 $("#tabStory").onclick = () => tab("story");
+$("#tabHeal").onclick = () => tab("heal");
 $("#tabConsole").onclick = () => tab("console");
 
 let tools = [];
@@ -643,6 +956,9 @@ const EXAMPLES = {
   user_list_on_tower: { enodeb_name: "KKRI-0143" },
   user_list_in_area: { lat: 5.531, lng: 102.197, radius_km: 10, limit: 20 },
   sites_list_in_bbox: { min_lat: 4.0, min_lng: 117.7, max_lat: 4.4, max_lng: 118.0, kind: "MALL" },
+  usage_top_apps_in_area: { lat: 4.214, lng: 117.857, radius_km: 10, rank_by: "data", limit: 5 },
+  usage_get_tower_apps: { enodeb_name: "KKRI-0143", rank_by: "users", limit: 5 },
+  usage_app_trend: { lat: 4.214, lng: 117.857, radius_km: 10, app: "TikTok" },
   ontology_blast_radius: { site: "KKRI-0142" },
   grid_get_tower_power: { enodeb_name: "KKRI-0142" },
   flood_get_gauge: { gauge_id: "GAUGE-KKRI-01" },
@@ -702,19 +1018,25 @@ function storyNote(text, kind) {
   box.className = "small " + (kind || "muted");
   box.textContent = text;
 }
+// The Story and Self-heal tabs share one run, so their buttons move together.
+function setRunning(running) {
+  for (const id of ["#runLive", "#healLive"]) $(id).disabled = !run.live || running;
+  for (const id of ["#runReplay", "#healReplay"]) $(id).disabled = running;
+  for (const id of ["#cancelRun", "#healCancel"]) $(id).disabled = !running;
+}
 
 async function storyStatus() {
   try {
     const { body } = await getJson("/api/agent/status");
     run.live = body.live_available;
-    $("#runLive").disabled = !body.live_available || body.running;
-    $("#runReplay").disabled = body.running;
-    $("#cancelRun").disabled = !body.running;
-    $("#runLive").title = body.live_available ? "Model: " + body.model : "No DEEPSEEK_API_KEY in .env; restart the demo after adding it";
+    setRunning(body.running);
+    const title = body.live_available ? "Model: " + body.model : "No DEEPSEEK_API_KEY in .env; restart the demo after adding it";
+    $("#runLive").title = $("#healLive").title = title;
     if (!body.live_available) storyNote("Live is off: no DEEPSEEK_API_KEY in .env. Replay still works.");
     return body;
   } catch (error) {
     storyNote(error.message, "box err");
+    $("#healNow").textContent = error.message;
     return { running: false };
   }
 }
@@ -722,13 +1044,14 @@ async function storyStatus() {
 async function startRun(mode) {
   try {
     const { response, body } = await postJson("/api/agent/run", { mode, task: $("#storyTask").value, clock: Number($("#storyClock").value) });
-    if (!response.ok) { storyNote(body.error, "box err"); return; }
-  } catch (error) { storyNote(error.message, "box err"); return; }
+    if (!response.ok) { storyNote(body.error, "box err"); $("#healNow").textContent = body.error; return; }
+  } catch (error) { storyNote(error.message, "box err"); $("#healNow").textContent = error.message; return; }
   run.since = 0; run.cards = {};
-  clearEffects();
+  clearEffects(); resetHeal();
   $("#timeline").replaceChildren();
   storyNote((mode === "live" ? "Live run" : "Replay") + " started...");
-  $("#runLive").disabled = $("#runReplay").disabled = true; $("#cancelRun").disabled = false;
+  $("#healNow").textContent = (mode === "live" ? "Live run" : "Replay") + " started...";
+  setRunning(true);
   clearInterval(run.timer);
   run.timer = setInterval(pollRun, 700);
   pollRun();
@@ -741,9 +1064,11 @@ async function pollRun() {
   run.since = reply.next;
   if (reply.events.length) { loadClock(); const pane = $("#paneStory"); pane.scrollTop = pane.scrollHeight; }
   storyNote(reply.pending_approval ? "Waiting for your decision..." : reply.status === "running" ? "Running..." : "Finished: " + reply.status);
+  if (reply.pending_approval) $("#healNow").textContent = "Waiting for your decision: open the Story tab and press Approve or Reject.";
   if (reply.status !== "running") {
     clearInterval(run.timer);
-    $("#runLive").disabled = !run.live; $("#runReplay").disabled = false; $("#cancelRun").disabled = true;
+    setRunning(false);
+    finishHeal(); refreshHeal();
     loadClock(); loadTowers(); refreshStats();
   }
 }
@@ -756,8 +1081,9 @@ async function resumeRun() {
   run.cards = {};
   for (const event of reply.events) renderEvent(event);
   run.since = reply.next;
-  if (reply.status === "running") { $("#runLive").disabled = $("#runReplay").disabled = true; $("#cancelRun").disabled = false; clearInterval(run.timer); run.timer = setInterval(pollRun, 700); }
-  else storyNote("Last run: " + reply.status);
+  if (reply.status === "running") { setRunning(true); clearInterval(run.timer); run.timer = setInterval(pollRun, 700); }
+  else { storyNote("Last run: " + reply.status); finishHeal(); }
+  refreshHeal();
 }
 
 function shorten(text, n) { return text.length > n ? text.slice(0, n) + "…" : text; }
@@ -786,6 +1112,8 @@ function renderEvent(event) {
       entry.card.addEventListener("click", (click) => { if (!click.target.closest("details")) focusStep(event.step); });
     }
     refreshStats();
+  } else if (event.type === "heal") {
+    onHeal(event);
   } else if (event.type === "approval") {
     const approve = el("button", { class: "primary" }, "Approve");
     const reject = el("button", {}, "Reject");
@@ -805,6 +1133,9 @@ function renderEvent(event) {
 $("#runLive").onclick = () => startRun("live");
 $("#runReplay").onclick = () => startRun("replay");
 $("#cancelRun").onclick = () => postJson("/api/agent/cancel");
+$("#healLive").onclick = () => startRun("live");
+$("#healReplay").onclick = () => startRun("replay");
+$("#healCancel").onclick = () => postJson("/api/agent/cancel");
 
 async function explainTrail(hash) {
   const out = $("#storyOut");
@@ -823,11 +1154,12 @@ async function explainTrail(hash) {
 // ---------- start ----------
 (async function start() {
   setupMap();
+  resetHeal();
   try {
     await loadClock();
     await loadTowers();
     refreshStats();
-    // Shareable scenes: #kk, #tawau, #tawau-trail (a commuter's trail), #story and #console
+    // Shareable scenes: #kk, #tawau, #tawau-trail (a commuter's trail), #story, #heal (starts a Replay), #replay and #console
     const scene = location.hash.slice(1);
     if (scene.startsWith("tawau")) await preset(150, 4.214, 117.857, 10, 11);
     else if (scene === "kk") await preset(12, 5.531, 102.197, 15, 10);
@@ -840,6 +1172,7 @@ async function explainTrail(hash) {
     if (scene === "console") tab("console");
     if (scene === "story") tab("story");
     if (scene === "replay") { tab("story"); await startRun("replay"); }
+    if (scene === "heal") { tab("heal"); await startRun("replay"); }
   } catch (error) {
     message("Could not reach the servers: " + error.message, "err");
   }

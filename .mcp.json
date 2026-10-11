@@ -131,6 +131,17 @@
         "-m",
         "drone_mcp"
       ]
+    },
+    "usage": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "usage-mcp",
+        "python",
+        "-m",
+        "usage_mcp"
+      ]
     }
   }
 }

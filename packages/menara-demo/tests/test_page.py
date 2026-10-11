@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 PAGE = Path(__file__).resolve().parents[1] / "src" / "menara_demo" / "static" / "index.html"
-ALLOWED_HOSTS = {"unpkg.com", "tile.openstreetmap.org"}
+ALLOWED_HOSTS = {"unpkg.com", "tile.openstreetmap.org", "www.w3.org"}  # www.w3.org is the SVG namespace name, never fetched
 BRANDS = [r"telekom", r"\btm\s+unifi\b", r"\bmaxis\b", r"\bcelcom", r"\bdigi\b", r"u\s+mobile", r"\bpetronas\b"]
 
 
@@ -83,3 +83,25 @@ def test_the_script_is_valid_javascript(tmp_path: Path) -> None:
     file.write_text(script(), encoding="utf-8")
     result = subprocess.run(["node", "--check", str(file)], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
+    assert result.returncode == 0, result.stderr
+
+def test_the_page_has_the_heal_reset_and_usage_hooks() -> None:
+    text = page()
+    for needle in (
+        'id="tabHeal"', 'id="paneHeal"', 'id="healStages"', 'id="healChart"', 'id="healReplay"', 'id="healLive"', 'id="resetDemo"',
+        'id="resetDialog"', 'usageToggle', "usageCard", "/api/heal/state", "/api/reset", "usage_top_apps_in_area",
+        'event.type === "heal"', ":focus-visible",
+    ):
+        assert needle in text, needle
+
+
+def test_the_usage_card_says_it_is_a_synthetic_estimate_and_there_are_no_logos() -> None:
+    text = page().lower()
+    assert "synthetic estimate" in text
+    assert "<img" not in text and "background-image" not in text
+
+
+def test_every_stage_of_the_loop_has_a_place_on_the_page() -> None:
+    text = page()
+    for stage in ("detect", "diagnose", "simulate", "approve", "apply", "verify", "rollback", "recover"):
+        assert f'"{stage}"' in text or f"'{stage}'" in text, stage

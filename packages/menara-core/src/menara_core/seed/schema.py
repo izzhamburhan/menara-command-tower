@@ -381,4 +381,27 @@ CREATE TABLE audit_log (
     decision TEXT NOT NULL,
     detail TEXT NOT NULL
 );
+
+-- base (seed only): synthetic app usage, served by usage-mcp. Invented numbers; no per-person data.
+CREATE TABLE app (
+    app_id   TEXT PRIMARY KEY,
+    name     TEXT NOT NULL,
+    category TEXT NOT NULL
+);
+
+CREATE TABLE app_hour_factor (
+    app_id TEXT NOT NULL REFERENCES app (app_id),
+    hour   INTEGER NOT NULL CHECK (hour BETWEEN 0 AND 23),
+    factor REAL NOT NULL,
+    PRIMARY KEY (app_id, hour)
+);
+
+-- user_share: the share of the tower's users who use the app in a day. data_share: the app's share of the tower's data.
+CREATE TABLE tower_app_share (
+    enodeb_name TEXT NOT NULL REFERENCES tower (enodeb_name),
+    app_id      TEXT NOT NULL REFERENCES app (app_id),
+    user_share  REAL NOT NULL,
+    data_share  REAL NOT NULL,
+    PRIMARY KEY (enodeb_name, app_id)
+);
 """

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -95,3 +96,53 @@ def test_replay_draws_the_incident_on_the_map(client: TestClient) -> None:
     down = next(effects for step, effects in by_step.items() if calls[step] == "tower_get_status")
     assert down[0]["tone"] == "bad"
     assert all(0 < e["lat"] < 10 and 95 < e["lng"] < 120 for effects in by_step.values() for e in effects)  # Malaysia
+    assert all(0 < e["lat"] < 10 and 95 < e["lng"] < 120 for effects in by_step.values() for e in effects)  # Malaysia
+
+def ids_in(state: dict[str, Any]) -> dict[str, str]:
+    text = json.dumps(state["events"])
+    found: dict[str, str] = {}
+    for prefix in ("INC", "CHG", "APR", "MIS", "SIM"):
+        match = re.search(prefix + r"-\d{4}", text)
+        if match:
+            found[prefix] = match.group(0)
+    return found
+
+
+def test_replay_twice_with_a_reset_between_gives_the_same_ids(client: TestClient) -> None:
+    first = play(client, [True, True, True])
+    first_ids = ids_in(first)
+    assert {"INC", "CHG", "APR", "MIS", "SIM"} <= set(first_ids)
+    reset = client.post("/api/reset")
+    assert reset.status_code == 200 and reset.json()["deleted"]["incident"] >= 1 and reset.json()["clock"]["t_min"] == 0
+    assert client.get("/api/agent/events").json()["events"] == []
+    second = play(client, [True, True, True])
+    assert second["status"] == "done" and ids_in(second) == first_ids
+
+def test_replay_emits_the_eight_stages_in_order(client: TestClient) -> None:
+    state = play(client, [True, True, True])
+    heals = [e for e in state["events"] if e["type"] == "heal"]
+    stages = [h["stage"] for h in heals]
+    first = [stages.index(s) for s in ("detect", "diagnose", "simulate", "approve", "apply", "verify", "rollback", "recover")]
+    assert first == sorted(first)
+    second_tilt = next(i for i, h in enumerate(heals) if h["stage"] == "apply" and h["attempt"] == 2)
+    assert stages.index("rollback") < second_tilt and stages[-1] in {"recover", "verify", "approve", "rollback"}
+    assert [h["attempt"] for h in heals if h["stage"] == "apply" and h["attempt"]] == [1, 2]
+    assert any(h["label"] == "Human approved" for h in heals)
+
+
+def test_heal_state_after_the_replay_shows_the_failed_then_the_good_tilt(client: TestClient) -> None:
+    before = client.get("/api/heal/state").json()
+    assert before["ok"] is True and before["changes"] == [] and before["incident"] is None
+    play(client, [True, True, True])
+    state = client.get("/api/heal/state").json()
+    assert state["failed_tower"] == "KKRI-0142" and state["incident"]["status"] == "RESOLVED"
+    assert {"KKRI-0143", "KKRI-0144"} <= set(state["watched"])
+    first, second = state["changes"][0], state["changes"][1]
+    assert first["status"] == "REVERTED" and first["reverted_min"] is not None
+    series = state["series"]["KKRI-0143"]
+    before_fix = [p["prb"] for p in series if 0 <= p["t_min"] < first["applied_min"]]  # from T0: the overload began at -5
+    after_first = [p["prb"] for p in series if first["applied_min"] <= p["t_min"] < first["reverted_min"]]
+    during_second = [p["prb"] for p in series if second["applied_min"] <= p["t_min"] < (second["reverted_min"] or 10**6)]
+    assert before_fix and min(before_fix) >= state["threshold"]
+    assert after_first and min(after_first) >= state["threshold"]  # the first tilt did not help enough
+    assert during_second and max(during_second) < state["threshold"]  # the second one did
