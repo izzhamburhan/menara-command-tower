@@ -43,6 +43,16 @@ def test_policy_and_draft_calls_get_readable_labels() -> None:
     assert draft is not None and "980" in draft["label"] and "ms" in draft["label"]
 
 
+def test_incident_and_drone_calls_get_readable_labels() -> None:
+    tracker = TrackTracker()
+    made = tracker.observe("ontology_create_incident", {"enodeb_name": "KKRI-0142"}, json.dumps({"data": {"incident_id": "INC-0001"}}))
+    assert made is not None and made["label"] == "Incident INC-0001 opened on KKRI-0142"
+    done = tracker.observe("ontology_update_incident", {"incident_id": "INC-0001", "status": "RESOLVED"}, "{}")
+    assert done is not None and done["label"] == "Incident INC-0001 resolved"
+    mission = tracker.observe("drone_get_mission", {}, json.dumps({"data": {"mission_id": "MIS-0001", "status": "COMPLETE"}}))
+    assert mission is not None and mission["label"] == "Drone mission MIS-0001 complete"
+
+
 def test_the_tracker_words_a_track_event_from_the_result() -> None:
     tracker = TrackTracker()
     sent = json.dumps({"data": {"notice_id": "NTC-0001", "recipients_est": 980, "tickets_deflected_est": 24}})
@@ -124,6 +134,17 @@ def test_tracks_state_shows_only_what_has_happened_by_the_clock(db_file: Path) -
     assert state["cards"][4]["numbers"]["kwh_saved"] == 0.0  # the action is at minute 500, the clock is at 0
     later = asyncio.run(tracks_state(hub, db_file, 600, AS_OF))  # type: ignore[arg-type]
     assert later["cards"][4]["numbers"]["kwh_saved"] == 9.0
+
+
+def test_the_network_card_names_the_next_event_and_its_risk(db_file: Path) -> None:
+    hub = FakeHub(
+        {
+            "events_list_upcoming": {"returned": 1, "events": [{"event_id": "EV-0001", "name": "Derby (synthetic)", "attendance": 42000}]},
+            "events_forecast_load": {"overall_risk": "HIGH"},
+        }
+    )
+    card = asyncio.run(tracks_state(hub, db_file, 0, AS_OF))["cards"][3]
+    assert card["numbers"] == {"next_event": "Derby (synthetic)", "next_event_attendance": 42000, "next_event_risk": "HIGH"}
 
 
 def test_a_failing_server_leaves_its_card_waiting_not_broken(db_file: Path) -> None:

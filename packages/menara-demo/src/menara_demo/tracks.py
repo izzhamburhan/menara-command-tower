@@ -108,6 +108,14 @@ class TrackTracker:
         if name == "scam_get_hotspots":
             top = _first(data, "patterns")
             return f"Top scam: {top.get('name', 'none')} ({top.get('reports', 0)} reports, {top.get('trend', '')})"
+        if name == "ontology_create_incident":
+            return f"Incident {data.get('incident_id', '')} opened on {arguments.get('enodeb_name', 'a tower')}"
+        if name == "ontology_update_incident":
+            return f"Incident {arguments.get('incident_id', '')} {str(arguments.get('status', 'updated')).lower()}"
+        if name == "drone_dispatch":
+            return f"Drone sent to {arguments.get('enodeb_name', 'the tower')}"
+        if name == "drone_get_mission":
+            return f"Drone mission {data.get('mission_id', '')} {str(data.get('status', '')).replace('_', ' ').lower()}".strip()
         if name == "policy_check_action":
             return f"Policy for {arguments.get('action', 'an action')}: {data.get('decision', '?')}"
         if name == "care_draft_notice":
@@ -165,6 +173,7 @@ async def tracks_state(hub: Hub, db_file: Path, clock_min: int, as_of: str) -> d
     top_alert = _first(alerts, "alerts")
     top_scam = _first(scam, "patterns")
     next_event = _first(events, "events")
+    forecast = await _safe(hub, "events_forecast_load", {"event_id": next_event["event_id"]}) if next_event.get("event_id") else {}
     incident = incidents[0] if incidents and isinstance(incidents[0], dict) else {}
 
     cards = [
@@ -177,7 +186,7 @@ async def tracks_state(hub: Hub, db_file: Path, clock_min: int, as_of: str) -> d
               {"notices_sent": len(sent), "customers_notified": notified, "tickets_deflected": deflected,
                "top_scam": top_scam.get("name"), "top_scam_reports": top_scam.get("reports", 0)}),
         _card(4, "Waiting for the network to be checked.", bool(missions or incident),
-              {"next_event": next_event.get("name"), "next_event_attendance": next_event.get("attendance", 0)}),
+              {"next_event": next_event.get("name"), "next_event_attendance": next_event.get("attendance", 0), "next_event_risk": forecast.get("overall_risk")}),
         _card(5, "Waiting for a saving to be applied.", kwh > 0,
               {"kwh_saved": round(kwh, 2), "co2_kg_saved": round(co2, 2), "water_alert": top_alert.get("status"),
                "water_alert_minutes_to_danger": top_alert.get("projected_min_to_danger")}),

@@ -142,6 +142,22 @@
   #healChart text { fill: var(--muted); font: 10px var(--font); }
   #healChart .lbl { fill: var(--text); font-weight: 600; }
   #healResult { margin: var(--s3) 0 0; font-size: var(--fs); }
+  /* the six tracks */
+  #trackCards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); margin: var(--s3) 0; }
+  .tcard { --c: var(--accent); padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line); border-top: 3px solid var(--c); background: rgba(255, 255, 255, 0.025); display: flex; flex-direction: column; gap: 6px; min-width: 0; transition: box-shadow .3s, background .3s; }
+  .tcard .th { display: flex; align-items: center; gap: 8px; }
+  .tcard .tn { flex: none; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: 800; color: #07101f; background: var(--c); }
+  .tcard .tt { font-size: var(--fs-sm); font-weight: 700; line-height: 1.2; }
+  .tcard .tbig { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .tcard .tbig b { display: block; font-size: 17px; line-height: 1.2; color: var(--muted); overflow-wrap: anywhere; }
+  .tcard .tbig span { font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .tcard .tnote { font-size: var(--fs-sm); color: var(--muted); min-height: 2.6em; overflow-wrap: anywhere; }
+  .tcard.done .tbig b { color: var(--text); }
+  .tcard.done .tnote { color: var(--text); }
+  .tcard.lit { background: rgba(56, 225, 255, 0.08); box-shadow: 0 0 0 2px var(--c), 0 0 22px -4px var(--c); }
+  #tracksNow { min-height: 20px; font-size: var(--fs); margin: var(--s3) 0; padding: 6px 10px; border-left: 3px solid var(--accent); background: rgba(56, 225, 255, 0.06); border-radius: 0 var(--r-sm) var(--r-sm) 0; color: var(--text); }
+  #tracksDecide { margin: 0 0 var(--s3); }
+  @media (max-width: 420px) { #trackCards { grid-template-columns: 1fr; } }
   .empty { text-align: center; color: var(--muted); padding: var(--s5) var(--s4); border: 1px dashed var(--line); border-radius: var(--r); font-size: var(--fs-sm); }
 
   dialog { color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s5); max-width: 420px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6); }
@@ -244,6 +260,7 @@
     <button id="tabArea" class="on" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M8 14s4.5-4 4.5-7.5a4.5 4.5 0 0 0-9 0C3.5 10 8 14 8 14z"/><circle cx="8" cy="6.5" r="1.6"/></svg><span>Map &amp; area</span></button>
     <button id="tabStory" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg><span>Story</span></button>
     <button id="tabHeal" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M8 13.5S2.5 10 2.5 6a3 3 0 0 1 5.5-1.6A3 3 0 0 1 13.5 6c0 4-5.5 7.5-5.5 7.5z"/></svg><span>Self-heal</span></button>
+    <button id="tabTracks" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M2.5 13.5v-4M6.5 13.5v-9M10.5 13.5v-6M14 13.5V2.5"/></svg><span>Tracks</span></button>
     <button id="tabConsole" role="tab"><svg class="ico" viewBox="0 0 16 16"><path d="M2.5 4l4 4-4 4M8 12.5h5.5"/></svg><span>Console</span></button>
   </div>
   <section id="paneArea" class="pane on">
@@ -292,6 +309,17 @@
     <svg id="healChart" viewBox="0 0 420 230" role="img" aria-label="Load of the overloaded neighbour towers over scenario time, with the overload line and each tilt marked"></svg>
     <p id="healResult" class="muted">The chart fills in as the loop runs.</p>
   </section>
+  <section id="paneTracks" class="pane">
+    <p class="lead">One flood, six hackathon tracks. The six-track Replay plays the Kuala Krai flood through every track with a fixed script (no key needed): idle towers sleep the night before, then the incident, customers told before they call, business customers credited, a crew sent by boat, and the next big match forecast and sold. Every real-world action waits for <b>your</b> Approve. Press <b>Reset demo</b> between runs.</p>
+    <div class="row">
+      <button id="tracksReplay" class="primary">Run six-track Replay</button>
+      <button id="tracksCancel" disabled>Cancel</button>
+    </div>
+    <div id="tracksDecide" class="box warn" hidden></div>
+    <div id="tracksNow" role="status" aria-live="polite">Not started. Press Run six-track Replay.</div>
+    <div id="trackCards" aria-label="One card per hackathon track"></div>
+    <p class="small muted">All numbers are synthetic estimates from invented rates and fictional customers; nothing is a claim about real systems.</p>
+  </section>
   <section id="paneConsole" class="pane">
     <p class="lead">Run any tool and see the raw response. The four human-only approval tools are not offered.</p>
     <div class="row"><select id="toolSel" aria-label="Tool"></select> <button id="runTool" class="primary">Run</button></div>
@@ -320,7 +348,7 @@
 <dialog id="resetDialog" aria-labelledby="resetTitle">
   <form method="dialog">
     <h3 id="resetTitle">Reset the demo?</h3>
-    <p>This removes everything created while playing (incidents, approvals, tilts, drone missions, notes and the audit log), restores the policy settings and puts the clock back to the start. The map data is not touched and the servers keep running.</p>
+    <p>This removes everything created while playing (incidents, approvals, tilts, drone missions, notices, credits, bookings, work orders, energy actions, notes and the audit log), restores the policy settings and puts the clock back to the start. The map data is not touched and the servers keep running.</p>
     <div class="actions"><button value="cancel">Cancel</button><button value="reset" class="danger" id="resetConfirm">Reset</button></div>
   </form>
 </dialog>
@@ -332,7 +360,7 @@
 const STATUS_COLOR = { UP: "#2ee59d", DEGRADED: "#ffc83d", DOWN: "#ff4d6d", UNKNOWN: "#8a93a8" };
 const LABEL_COLOR = { GOOD: "#2ee59d", FAIR: "#ffc83d", POOR: "#ff8a3d", NO_SERVICE: "#ff4d6d" };
 const TONE = { ok: "#2ee59d", warn: "#ffc83d", bad: "#ff4d6d", info: "#5aa9ff" };
-const GLYPH = { mall: "M", school: "S", hospital: "H", clinic: "+", police: "P", fire: "F", enterprise: "E", tower: "T", drone: "D", ticket: "!" };
+const GLYPH = { mall: "M", school: "S", hospital: "H", clinic: "+", police: "P", fire: "F", enterprise: "E", tower: "T", drone: "D", ticket: "!", crew: "C", sensor: "W", business: "B" };
 const CATEGORY_COLOR = { SHORT_VIDEO: "#ff6fb1", SOCIAL: "#5aa9ff", MESSAGING: "#2ee59d", VIDEO_STREAMING: "#ff8a3d", MUSIC: "#a66bff", GAMING: "#ffc83d", COMMERCE: "#ffa8c8", MOBILITY: "#38e1ff" };
 const SERIES_COLOR = ["#38e1ff", "#a66bff", "#ffc83d", "#ff7ab6", "#2ee59d"];
 const STAGES = [["detect", "Detect"], ["diagnose", "Diagnose"], ["simulate", "Simulate"], ["approve", "Approve"], ["apply", "Apply"], ["verify", "Verify"], ["rollback", "Roll back"], ["recover", "Recover"]];
@@ -902,8 +930,83 @@ $("#radius").oninput = (event) => {
   clearTimeout(radiusTimer); radiusTimer = setTimeout(runArea, 300);
 };
 
+// ---------- the six tracks ----------
+const TRACK_NAMES = ["Industry and Operations", "Workforce Productivity", "Customer Experience", "Networks and Infrastructure", "Sustainability and Smart Nation", "Revenue Streams"];
+const TRACK_COLOR = ["#38e1ff", "#ffc83d", "#ff7ab6", "#5aa9ff", "#2ee59d", "#a66bff"];
+const TRACK_WAITING = ["Waiting for an incident to run.", "Waiting for a crew to be sent.", "Waiting for customers to be told.", "Waiting for the network to be checked.", "Waiting for a saving to be applied.", "Waiting for credits or bookings."];
+const tracksUi = { last: {}, lit: null, litTimer: null, timer: null, state: null };
+const rm = (n) => "RM " + Math.round(Number(n || 0)).toLocaleString("en-MY");
+const count = (n) => Number(n || 0).toLocaleString("en-MY");
+const TRACK_VIEW = [
+  (n) => [[n.incident_status || "none", "Incident"], [count(n.drone_missions), "Drone missions"]],
+  (n) => [[count(n.jobs), "Work orders"], [n.next_eta_min === null || n.next_eta_min === undefined ? "-" : n.next_eta_min + " min", "ETA left"]],
+  (n) => [[count(n.customers_notified), "Customers told"], [count(n.tickets_deflected), "Tickets avoided"]],
+  (n) => [[count(n.next_event_attendance), "Next crowd"], [n.next_event_risk || "-", "Load risk"]],
+  (n) => [[Number(n.kwh_saved || 0).toFixed(1), "kWh saved"], [Number(n.co2_kg_saved || 0).toFixed(1), "kg CO2 saved"]],
+  (n) => [[rm(n.credits_rm), "Credited"], [rm(n.qod_booked_rm), "Booked"]],
+];
+function trackNote(card) {
+  const n = card.numbers || {};
+  if (tracksUi.last[card.track]) return tracksUi.last[card.track];
+  if (!card.done) return card.waiting;
+  if (card.track === 2 && card.jobs && card.jobs.length) { const j = card.jobs[0]; return j.job_id + " " + j.tech_name + " by " + String(j.access).toLowerCase() + ", " + j.status.toLowerCase().replace("_", " "); }
+  if (card.track === 3 && n.top_scam) return "Top scam: " + n.top_scam;
+  if (card.track === 4 && n.next_event) return "Next: " + n.next_event;
+  if (card.track === 5 && n.water_alert) return "River sensor " + n.water_alert;
+  return "Done.";
+}
+function renderTracks(state) {
+  tracksUi.state = state;
+  $("#trackCards").replaceChildren(...state.cards.map((card) => {
+    const i = card.track - 1;
+    const bigs = TRACK_VIEW[i](card.numbers || {});
+    const cls = "tcard" + (card.done ? " done" : "") + (tracksUi.lit === card.track ? " lit" : "");
+    return el("article", { class: cls, "data-track": String(card.track), style: "--c:" + TRACK_COLOR[i] },
+      el("div", { class: "th" }, el("span", { class: "tn" }, String(card.track)), el("span", { class: "tt" }, TRACK_NAMES[i])),
+      el("div", { class: "tbig" }, bigs.map(([value, label]) => el("div", {}, el("b", {}, value), el("span", {}, label)))),
+      el("div", { class: "tnote" }, trackNote(card)));
+  }));
+}
+function resetTracks() {
+  tracksUi.last = {}; tracksUi.lit = null;
+  renderTracks({ cards: TRACK_NAMES.map((title, i) => ({ track: i + 1, title, waiting: TRACK_WAITING[i], done: false, numbers: {} })) });
+  $("#tracksNow").textContent = "Not started. Press Run six-track Replay.";
+  showTrackDecision(null);
+}
+function refreshTracks() {
+  clearTimeout(tracksUi.timer);
+  tracksUi.timer = setTimeout(async () => {
+    try {
+      const { response, body } = await getJson("/api/tracks/state");
+      if (!response.ok) throw new Error(body.error);
+      renderTracks(body);
+    } catch (error) { $("#tracksNow").textContent = error.message; }
+  }, 250);
+}
+function onTrack(event) {
+  if (event.name !== "policy_check_action" && event.label !== event.name) tracksUi.last[event.track] = event.label;  // policy checks and bare tool names say nothing about a track
+  tracksUi.lit = event.track;
+  clearTimeout(tracksUi.litTimer);
+  tracksUi.litTimer = setTimeout(() => { tracksUi.lit = null; if (tracksUi.state) renderTracks(tracksUi.state); }, 2500);
+  $("#tracksNow").textContent = TRACK_NAMES[event.track - 1] + ": " + event.label;
+  if (tracksUi.state) renderTracks(tracksUi.state);
+  refreshTracks();
+}
+function showTrackDecision(summary) {
+  const box = $("#tracksDecide");
+  if (!summary) { box.hidden = true; box.dataset.summary = ""; return; }
+  if (!box.hidden && box.dataset.summary === summary) return;
+  box.dataset.summary = summary;
+  const approve = el("button", { class: "primary" }, "Approve");
+  const reject = el("button", {}, "Reject");
+  const decide = async (yes) => { approve.disabled = reject.disabled = true; await postJson("/api/agent/decision", { approve: yes }); };
+  approve.onclick = () => decide(true); reject.onclick = () => decide(false);
+  box.replaceChildren(el("b", {}, "Human approval needed"), el("div", { class: "small" }, summary), el("div", { class: "decide" }, approve, reject));
+  box.hidden = false;
+}
+
 // ---------- reset ----------
-const REMOVED_NAMES = { incident: "incident", twin_simulation: "simulation", ran_change: "RAN change", drone_mission: "drone mission", approval: "approval", audit_log: "audit entry", ticket_note: "ticket note", ticket_resolution: "ticket resolution" };
+const REMOVED_NAMES = { incident: "incident", twin_simulation: "simulation", ran_change: "RAN change", drone_mission: "drone mission", approval: "approval", audit_log: "audit entry", ticket_note: "ticket note", ticket_resolution: "ticket resolution", energy_action: "energy action", care_notice: "customer notice", sla_credit: "SLA credit", qod_booking: "booking", field_job: "work order" };
 function describeRemoved(deleted) {
   const parts = Object.entries(REMOVED_NAMES).filter(([table]) => deleted[table]).map(([table, name]) => deleted[table] + " " + name + (deleted[table] === 1 ? "" : "s"));
   return parts.length ? "Removed " + parts.join(", ") + "." : "Nothing to remove: the demo was already clean.";
@@ -913,7 +1016,7 @@ function resetViews() {
   $("#timeline").replaceChildren();
   run.cards = {}; run.since = 0;
   storyNote("");
-  resetHeal();
+  resetHeal(); resetTracks();
   trailLayer && trailLayer.clearLayers(); placeLayer && placeLayer.clearLayers();
   setRunning(false);
   loadClock(); loadTowers(); refreshStats(); runArea();
@@ -931,19 +1034,21 @@ $("#resetDialog").addEventListener("close", () => { if ($("#resetDialog").return
 
 // ---------- tabs and console ----------
 function tab(which) {
-  for (const name of ["area", "story", "heal", "console"]) {
+  for (const name of ["area", "story", "heal", "tracks", "console"]) {
     const cap = name[0].toUpperCase() + name.slice(1);
     $("#tab" + cap).classList.toggle("on", which === name);
     $("#pane" + cap).classList.toggle("on", which === name);
     $("#tab" + cap).setAttribute("aria-selected", String(which === name));
   }
   if (which === "console" && !tools.length) loadTools();
-  if (which === "story" || which === "heal") storyStatus().then(resumeRun);
+  if (which === "story" || which === "heal" || which === "tracks") storyStatus().then(resumeRun);
   if (which === "heal") refreshHeal();
+  if (which === "tracks") refreshTracks();
 }
 $("#tabArea").onclick = () => tab("area");
 $("#tabStory").onclick = () => tab("story");
 $("#tabHeal").onclick = () => tab("heal");
+$("#tabTracks").onclick = () => tab("tracks");
 $("#tabConsole").onclick = () => tab("console");
 
 let tools = [];
@@ -964,6 +1069,31 @@ const EXAMPLES = {
   flood_get_gauge: { gauge_id: "GAUGE-KKRI-01" },
   weather_get_rainfall: { lat: 5.531, lng: 102.197, window_min: 1440 },
   policy_get_status: {},
+  energy_get_tower: { enodeb_name: "KKRI-0142" },
+  energy_find_savings: { lat: 3.139, lng: 101.687, radius_km: 15, hour: 2 },
+  energy_apply_sleep: { enodeb_names: ["TOWER-FROM-SAVINGS"], policy_token: "from policy_check_action", reason: "Night saving" },
+  care_get_impact: { enodeb_names: ["KKRI-0142"] },
+  care_draft_notice: { enodeb_names: ["KKRI-0142"], kind: "OUTAGE", language: "ms" },
+  care_send_notice: { enodeb_names: ["KKRI-0142"], language: "ms", message: "Perkhidmatan terjejas akibat banjir. Kami sedang memulihkannya.", policy_token: "from policy_check_action" },
+  care_list_notices: { limit: 20 },
+  enterprise_get_revenue_at_risk: { enodeb_names: ["KKRI-0142"] },
+  enterprise_list_accounts: { lat: 5.531, lng: 102.197, radius_km: 15, limit: 20 },
+  enterprise_issue_credit: { account_id: "ACC-0028", hours: 2, policy_token: "from policy_check_action", reason: "SLA credit" },
+  exposure_list_profiles: {},
+  exposure_quote: { profile_id: "BROADCAST_UPLINK", enodeb_names: ["KTBH-0001"], duration_min: 180, start_in_min: 1500 },
+  exposure_book: { profile_id: "BROADCAST_UPLINK", enodeb_names: ["KTBH-0001"], duration_min: 180, customer: "Example Broadcaster (synthetic)", policy_token: "from policy_check_action" },
+  field_find_crew: { enodeb_name: "KKRI-0142", skill: "POWER" },
+  field_dispatch: { enodeb_name: "KKRI-0142", tech_id: "TECH-001", task: "Restore power and check the generator", policy_token: "from policy_check_action" },
+  field_list_jobs: { limit: 20 },
+  events_list_upcoming: { lat: 6.13, lng: 102.24, radius_km: 30, within_min: 4320 },
+  events_forecast_load: { event_id: "EVT-010" },
+  events_capacity_plan: { event_id: "EVT-010" },
+  sensors_list_in_area: { lat: 5.531, lng: 102.197, radius_km: 20, kind: "WATER_LEVEL" },
+  sensors_get_readings: { sensor_id: "SNS-0041", window_min: 360 },
+  sensors_get_alerts: { lat: 5.531, lng: 102.197, radius_km: 20 },
+  scam_get_hotspots: { lat: 5.531, lng: 102.197, radius_km: 30, window_min: 360 },
+  scam_get_pattern: { pattern_id: "SCM-09" },
+  scam_estimate_protection: { lat: 5.531, lng: 102.197, radius_km: 30 },
 };
 function template(tool) {
   if (EXAMPLES[tool.name]) return EXAMPLES[tool.name];
@@ -1021,8 +1151,8 @@ function storyNote(text, kind) {
 // The Story and Self-heal tabs share one run, so their buttons move together.
 function setRunning(running) {
   for (const id of ["#runLive", "#healLive"]) $(id).disabled = !run.live || running;
-  for (const id of ["#runReplay", "#healReplay"]) $(id).disabled = running;
-  for (const id of ["#cancelRun", "#healCancel"]) $(id).disabled = !running;
+  for (const id of ["#runReplay", "#healReplay", "#tracksReplay"]) $(id).disabled = running;
+  for (const id of ["#cancelRun", "#healCancel", "#tracksCancel"]) $(id).disabled = !running;
 }
 
 async function storyStatus() {
@@ -1041,16 +1171,18 @@ async function storyStatus() {
   }
 }
 
-async function startRun(mode) {
+async function startRun(mode, script) {
   try {
-    const { response, body } = await postJson("/api/agent/run", { mode, task: $("#storyTask").value, clock: Number($("#storyClock").value) });
+    const request = script === "tracks" ? { mode, script: "tracks" } : { mode, task: $("#storyTask").value, clock: Number($("#storyClock").value) };
+    const { response, body } = await postJson("/api/agent/run", request);
     if (!response.ok) { storyNote(body.error, "box err"); $("#healNow").textContent = body.error; return; }
   } catch (error) { storyNote(error.message, "box err"); $("#healNow").textContent = error.message; return; }
   run.since = 0; run.cards = {};
-  clearEffects(); resetHeal();
+  clearEffects(); resetHeal(); resetTracks();
   $("#timeline").replaceChildren();
   storyNote((mode === "live" ? "Live run" : "Replay") + " started...");
   $("#healNow").textContent = (mode === "live" ? "Live run" : "Replay") + " started...";
+  $("#tracksNow").textContent = "Six-track Replay started...";
   setRunning(true);
   clearInterval(run.timer);
   run.timer = setInterval(pollRun, 700);
@@ -1065,10 +1197,11 @@ async function pollRun() {
   if (reply.events.length) { loadClock(); const pane = $("#paneStory"); pane.scrollTop = pane.scrollHeight; }
   storyNote(reply.pending_approval ? "Waiting for your decision..." : reply.status === "running" ? "Running..." : "Finished: " + reply.status);
   if (reply.pending_approval) $("#healNow").textContent = "Waiting for your decision: open the Story tab and press Approve or Reject.";
+  showTrackDecision(reply.pending_approval);
   if (reply.status !== "running") {
     clearInterval(run.timer);
     setRunning(false);
-    finishHeal(); refreshHeal();
+    finishHeal(); refreshHeal(); refreshTracks();
     loadClock(); loadTowers(); refreshStats();
   }
 }
@@ -1114,6 +1247,8 @@ function renderEvent(event) {
     refreshStats();
   } else if (event.type === "heal") {
     onHeal(event);
+  } else if (event.type === "track") {
+    onTrack(event);
   } else if (event.type === "approval") {
     const approve = el("button", { class: "primary" }, "Approve");
     const reject = el("button", {}, "Reject");
@@ -1136,6 +1271,8 @@ $("#cancelRun").onclick = () => postJson("/api/agent/cancel");
 $("#healLive").onclick = () => startRun("live");
 $("#healReplay").onclick = () => startRun("replay");
 $("#healCancel").onclick = () => postJson("/api/agent/cancel");
+$("#tracksReplay").onclick = () => startRun("replay", "tracks");
+$("#tracksCancel").onclick = () => postJson("/api/agent/cancel");
 
 async function explainTrail(hash) {
   const out = $("#storyOut");
@@ -1154,12 +1291,12 @@ async function explainTrail(hash) {
 // ---------- start ----------
 (async function start() {
   setupMap();
-  resetHeal();
+  resetHeal(); resetTracks();
   try {
     await loadClock();
     await loadTowers();
     refreshStats();
-    // Shareable scenes: #kk, #tawau, #tawau-trail (a commuter's trail), #story, #heal (starts a Replay), #replay and #console
+    // Shareable scenes: #kk, #tawau, #tawau-trail (a commuter's trail), #story, #heal (starts a Replay), #replay, #tracks (starts the six-track Replay) and #console
     const scene = location.hash.slice(1);
     if (scene.startsWith("tawau")) await preset(150, 4.214, 117.857, 10, 11);
     else if (scene === "kk") await preset(12, 5.531, 102.197, 15, 10);
@@ -1173,6 +1310,7 @@ async function explainTrail(hash) {
     if (scene === "story") tab("story");
     if (scene === "replay") { tab("story"); await startRun("replay"); }
     if (scene === "heal") { tab("heal"); await startRun("replay"); }
+    if (scene === "tracks") { tab("tracks"); await startRun("replay", "tracks"); }
   } catch (error) {
     message("Could not reach the servers: " + error.message, "err");
   }
