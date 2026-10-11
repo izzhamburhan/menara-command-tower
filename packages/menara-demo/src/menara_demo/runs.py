@@ -105,6 +105,19 @@ class RunManager:
         self._task = asyncio.create_task(self._run(model, task, max_steps))
         return self.run_id
 
+    def clear(self) -> None:
+        """Forget the last run so the page starts empty. Not while a run is in progress."""
+        if self.running:
+            raise RuntimeError("A run is in progress")
+        self.run_id = None
+        self.status = "idle"
+        self.events = []
+        self._pending = None
+        self._pending_summary = None
+        self._effects = {}
+        self._cancelled = False
+        self._task = None
+
     def events_since(self, since: int) -> list[dict[str, Any]]:
         return self.events[max(0, since) :]
 

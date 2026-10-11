@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 from collections.abc import AsyncIterator, Iterator
@@ -95,3 +96,24 @@ def test_replay_draws_the_incident_on_the_map(client: TestClient) -> None:
     down = next(effects for step, effects in by_step.items() if calls[step] == "tower_get_status")
     assert down[0]["tone"] == "bad"
     assert all(0 < e["lat"] < 10 and 95 < e["lng"] < 120 for effects in by_step.values() for e in effects)  # Malaysia
+    assert all(0 < e["lat"] < 10 and 95 < e["lng"] < 120 for effects in by_step.values() for e in effects)  # Malaysia
+
+def ids_in(state: dict[str, Any]) -> dict[str, str]:
+    text = json.dumps(state["events"])
+    found: dict[str, str] = {}
+    for prefix in ("INC", "CHG", "APR", "MIS", "SIM"):
+        match = re.search(prefix + r"-\d{4}", text)
+        if match:
+            found[prefix] = match.group(0)
+    return found
+
+
+def test_replay_twice_with_a_reset_between_gives_the_same_ids(client: TestClient) -> None:
+    first = play(client, [True, True, True])
+    first_ids = ids_in(first)
+    assert {"INC", "CHG", "APR", "MIS", "SIM"} <= set(first_ids)
+    reset = client.post("/api/reset")
+    assert reset.status_code == 200 and reset.json()["deleted"]["incident"] >= 1 and reset.json()["clock"]["t_min"] == 0
+    assert client.get("/api/agent/events").json()["events"] == []
+    second = play(client, [True, True, True])
+    assert second["status"] == "done" and ids_in(second) == first_ids
