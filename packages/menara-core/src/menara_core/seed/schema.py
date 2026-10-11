@@ -499,4 +499,28 @@ CREATE TABLE crowd_event (
     end_min    INTEGER NOT NULL,
     attendance INTEGER NOT NULL
 );
+
+-- base (seed only): quality-on-demand products, served by exposure-mcp. Invented prices and capacity.
+CREATE TABLE qod_profile (
+    profile_id                  TEXT PRIMARY KEY,
+    name                        TEXT NOT NULL,
+    description                 TEXT NOT NULL,
+    guaranteed                  TEXT NOT NULL,
+    headroom_prb                REAL NOT NULL,
+    price_rm_per_hour_per_tower REAL NOT NULL
+);
+
+-- owned by exposure-mcp: bookings that were approved and made
+CREATE TABLE qod_booking (
+    seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id  TEXT UNIQUE,
+    profile_id  TEXT NOT NULL REFERENCES qod_profile (profile_id),
+    towers      TEXT NOT NULL,
+    customer    TEXT NOT NULL,
+    from_min    INTEGER NOT NULL,
+    to_min      INTEGER NOT NULL,
+    price_rm    REAL NOT NULL,
+    approved_by TEXT NOT NULL,
+    reason      TEXT NOT NULL
+);
 """

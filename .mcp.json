@@ -186,6 +186,17 @@
         "-m",
         "events_mcp"
       ]
+    },
+    "exposure": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "exposure-mcp",
+        "python",
+        "-m",
+        "exposure_mcp"
+      ]
     }
   }
 }

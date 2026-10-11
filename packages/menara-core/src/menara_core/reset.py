@@ -30,6 +30,7 @@ RUNTIME_TABLES: tuple[str, ...] = (
     "energy_action",
     "care_notice",
     "sla_credit",
+    "qod_booking",
 )
 
 
