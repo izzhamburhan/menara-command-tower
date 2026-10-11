@@ -23,6 +23,7 @@ members = [
     "ticket-mcp",
     "tower-mcp",
     "twin-mcp",
+    "usage-mcp",
     "user-mcp",
     "weather-mcp",
 ]
@@ -709,6 +710,7 @@ dev = [
     { name = "tower-mcp" },
     { name = "twin-mcp" },
     { name = "types-pyyaml" },
+    { name = "usage-mcp" },
     { name = "user-mcp" },
     { name = "weather-mcp" },
 ]
@@ -734,6 +736,7 @@ dev = [
     { name = "tower-mcp", editable = "servers/tower-mcp" },
     { name = "twin-mcp", editable = "servers/twin-mcp" },
     { name = "types-pyyaml", specifier = ">=6.0" },
+    { name = "usage-mcp", editable = "servers/usage-mcp" },
     { name = "user-mcp", editable = "servers/user-mcp" },
     { name = "weather-mcp", editable = "servers/weather-mcp" },
 ]
@@ -1460,6 +1463,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a3/26/b09b8010994eccc3c09092e6b34058f36a460eea2d4c3e8b910c695975a0/typing_inspection-0.4.4.tar.gz", hash = "sha256:547274fa6b0a561ccf549cc9524b999a578e737d015d8709d021f9d0d13bea47", size = 76928, upload-time = "2026-08-12T12:37:25.997Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/67/81/4add07e5172b7ac40d8ed5ff580409a7801a4fe26d529bdd915401dabfbe/typing_inspection-0.4.4-py3-none-any.whl", hash = "sha256:65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147", size = 14750, upload-time = "2026-08-12T12:37:24.648Z" },
+]
+
+[[package]]
+name = "usage-mcp"
+version = "0.1.0"
+source = { editable = "servers/usage-mcp" }
+dependencies = [
+    { name = "mcp", extra = ["cli"] },
+    { name = "menara-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mcp", extras = ["cli"], specifier = ">=1.9,<2" },
+    { name = "menara-core", editable = "packages/menara-core" },
 ]
 
 [[package]]

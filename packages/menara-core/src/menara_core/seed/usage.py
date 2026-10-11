@@ -1,7 +1,7 @@
 """Synthetic app usage: which apps people use, when, and how much data they take. Invented numbers, labelled synthetic.
 
-Three base tables, read by usage-mcp: `app` (the catalogue), `app_hour_factor` (how active an app is in each hour,
-1.0 at its peak) and `tower_app_share` (per tower: the share of its users who use the app in a day, and the app's
+Three base tables, read by usage-mcp: `app` (the catalogue), `app_hour_factor` (the share of an app's daily users
+online with it in each hour, about 40% at its peak) and `tower_app_share` (per tower: the share of its users who use the app in a day, and the app's
 share of the tower's data). There is no per-person data. Each town gets its own favourite app so different places
 have a different number one. Drawn from its own random stream so every older table is unchanged.
 """
@@ -40,7 +40,9 @@ RISER_BOOST = 2.0  # an app that is catching on in the town
 MAX_REACH = 0.98
 NOISE = 0.1
 
-# Hourly activity, 0 to 1, by category (index = hour of day, 0 to 23).
+PEAK_ACTIVE = 0.4  # at its busiest hour, about 40% of an app's daily users are online with it
+
+# Hourly activity, 0 to 1 (1 = the busiest hour), by category (index = hour of day, 0 to 23).
 _FLAT = [0.10, 0.07, 0.05, 0.04, 0.04, 0.06, 0.14, 0.30, 0.42, 0.40, 0.42, 0.50, 0.62, 0.55, 0.48, 0.47, 0.52, 0.60, 0.68, 0.78, 0.92, 1.00, 0.80, 0.35]
 CURVES: dict[str, list[float]] = {
     "SHORT_VIDEO": [0.20, 0.12, 0.07, 0.05, 0.05, 0.07, 0.14, 0.26, 0.34, 0.32, 0.34, 0.45, 0.62, 0.52, 0.45, 0.46, 0.52, 0.62, 0.74, 0.88, 1.00, 0.98, 0.78, 0.40],
@@ -59,7 +61,7 @@ def build_usage(conn: sqlite3.Connection, seed: int, towers: list[TowerRow]) -> 
     conn.executemany("INSERT INTO app VALUES (?, ?, ?)", [(a[0], a[1], a[2]) for a in APPS])
     conn.executemany(
         "INSERT INTO app_hour_factor VALUES (?, ?, ?)",
-        [(a[0], hour, CURVES.get(a[2], _FLAT)[hour]) for a in APPS for hour in range(24)],
+        [(a[0], hour, round(CURVES.get(a[2], _FLAT)[hour] * PEAK_ACTIVE, 4)) for a in APPS for hour in range(24)],
     )
     towns = sorted({t.town for t in towers})
     favourite_of_town = {town: rng.choice(FAVOURITES) for town in towns}
