@@ -66,6 +66,10 @@ def dirty(db_file: Path) -> None:
         conn.execute("INSERT INTO audit_log (at, actor, action, target, decision, detail) VALUES (?, 'agent', 'a', 't', 'ask', 'd')", (AT,))
         conn.execute("INSERT INTO ticket_note (ticket_id, at, author, text) VALUES (?, ?, 'agent', 'n')", (ticket, AT))
         conn.execute("INSERT INTO ticket_resolution VALUES (?, 20, ?, 'agent', 'done')", (ticket, AT))
+        conn.execute(
+            "INSERT INTO energy_action (action_id, enodeb_name, kind, from_min, to_min, kwh_saved, co2_kg_saved, approved_by, reason) "
+            "VALUES ('ENA-0001', 'KKRI-0143', 'SLEEP', 1200, 1560, 3.0, 1.75, 'human', 'r')"
+        )
         conn.execute("UPDATE policy_setting SET value = '1' WHERE key = 'kill_switch'")
         conn.execute("UPDATE policy_setting SET value = '999' WHERE key = 'auto_allow_max_subscribers'")
         conn.commit()
@@ -111,7 +115,7 @@ def test_reset_clears_every_runtime_table_and_reports_the_counts(played: Path, s
 def test_the_runtime_tables_are_exactly_the_ones_servers_write(played: Path) -> None:
     assert set(RUNTIME_TABLES) == {
         "incident", "incident_ticket", "twin_simulation", "ran_change", "ran_change_item", "ran_kpi_effect",
-        "drone_mission", "approval", "audit_log", "ticket_note", "ticket_resolution",
+        "drone_mission", "approval", "audit_log", "ticket_note", "ticket_resolution", "energy_action",
     }
 
 

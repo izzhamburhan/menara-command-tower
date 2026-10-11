@@ -10,6 +10,7 @@ from menara_core.scenario import Scenario
 from menara_core.seed import towers as gen
 from menara_core.seed.actions import build_actions
 from menara_core.seed.context import build_context
+from menara_core.seed.energy import build_energy
 from menara_core.seed.movement import build_movement
 from menara_core.seed.people import build_people
 from menara_core.seed.schema import SCHEMA
@@ -145,6 +146,7 @@ def build(
         build_sites(conn, rng, scenario, everything)
         build_malls(conn, seed, scenario, everything)  # own random stream
         build_usage(conn, seed, everything)  # own random stream
+        build_energy(conn, seed, everything)  # own random stream
         build_actions(conn, rng, scenario, everything)
         build_movement(conn, seed, scenario)  # last, with its own random stream, so older tables are unchanged
         conn.commit()
@@ -156,6 +158,7 @@ def build(
                 "weather_station", "weather_obs", "grid_feeder", "grid_feeder_tower", "grid_feeder_state",
                 "flood_gauge", "flood_reading", "flood_extent", "critical_site", "tower_subscribers",
                 "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share",
+                "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share", "energy_action", "tower_energy",
             )
         }
     finally:

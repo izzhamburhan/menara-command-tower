@@ -10,6 +10,7 @@ resolution-markers = [
 [manifest]
 members = [
     "drone-mcp",
+    "energy-mcp",
     "flood-mcp",
     "grid-mcp",
     "menara",
@@ -299,6 +300,21 @@ wheels = [
 name = "drone-mcp"
 version = "0.1.0"
 source = { editable = "servers/drone-mcp" }
+dependencies = [
+    { name = "mcp", extra = ["cli"] },
+    { name = "menara-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mcp", extras = ["cli"], specifier = ">=1.9,<2" },
+    { name = "menara-core", editable = "packages/menara-core" },
+]
+
+[[package]]
+name = "energy-mcp"
+version = "0.1.0"
+source = { editable = "servers/energy-mcp" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
     { name = "menara-core" },
@@ -695,6 +711,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "drone-mcp" },
+    { name = "energy-mcp" },
     { name = "flood-mcp" },
     { name = "grid-mcp" },
     { name = "menara-agent" },
@@ -721,6 +738,7 @@ requires-dist = [{ name = "menara-core", editable = "packages/menara-core" }]
 [package.metadata.requires-dev]
 dev = [
     { name = "drone-mcp", editable = "servers/drone-mcp" },
+    { name = "energy-mcp", editable = "servers/energy-mcp" },
     { name = "flood-mcp", editable = "servers/flood-mcp" },
     { name = "grid-mcp", editable = "servers/grid-mcp" },
     { name = "menara-agent", editable = "packages/menara-agent" },

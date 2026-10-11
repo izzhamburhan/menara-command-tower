@@ -142,6 +142,17 @@
         "-m",
         "usage_mcp"
       ]
+    },
+    "energy": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "energy-mcp",
+        "python",
+        "-m",
+        "energy_mcp"
+      ]
     }
   }
 }

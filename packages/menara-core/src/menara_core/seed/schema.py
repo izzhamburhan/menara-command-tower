@@ -404,4 +404,28 @@ CREATE TABLE tower_app_share (
     data_share  REAL NOT NULL,
     PRIMARY KEY (enodeb_name, app_id)
 );
+
+-- base (seed only): synthetic tower energy, served by energy-mcp. Invented numbers.
+CREATE TABLE tower_energy (
+    enodeb_name    TEXT PRIMARY KEY REFERENCES tower (enodeb_name),
+    base_kw        REAL NOT NULL,
+    battery_kwh    REAL NOT NULL,
+    has_genset     INTEGER NOT NULL,
+    genset_fuel_l  REAL NOT NULL,
+    genset_l_per_h REAL NOT NULL
+);
+
+-- owned by energy-mcp: sleep modes that were approved and applied
+CREATE TABLE energy_action (
+    seq           INTEGER PRIMARY KEY AUTOINCREMENT,
+    action_id     TEXT UNIQUE,
+    enodeb_name   TEXT NOT NULL REFERENCES tower (enodeb_name),
+    kind          TEXT NOT NULL CHECK (kind IN ('SLEEP')),
+    from_min      INTEGER NOT NULL,
+    to_min        INTEGER NOT NULL,
+    kwh_saved     REAL NOT NULL,
+    co2_kg_saved  REAL NOT NULL,
+    approved_by   TEXT NOT NULL,
+    reason        TEXT NOT NULL
+);
 """
