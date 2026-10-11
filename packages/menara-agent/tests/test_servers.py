@@ -28,7 +28,7 @@ def test_the_environment_for_servers_drops_the_secrets() -> None:
 
 def test_load_config_reads_all_thirteen_servers_from_mcp_json() -> None:
     specs = load_config(REPO_ROOT / ".mcp.json")
-    assert len(specs) == 19 and {"tower", "policy", "drone", "ran", "usage", "energy", "care", "enterprise", "events", "exposure", "field"} <= set(specs)
+    assert len(specs) == 20 and {"tower", "policy", "drone", "ran", "usage", "energy", "care", "enterprise", "events", "exposure", "field", "sensors"} <= set(specs)
     assert specs["tower"].command == "uv" and specs["tower"].args[-1] == "tower_mcp"
 
 

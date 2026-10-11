@@ -208,6 +208,17 @@
         "-m",
         "field_mcp"
       ]
+    },
+    "sensors": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "sensors-mcp",
+        "python",
+        "-m",
+        "sensors_mcp"
+      ]
     }
   }
 }

@@ -558,4 +558,27 @@ CREATE TABLE field_job (
     approved_by    TEXT NOT NULL,
     reason         TEXT NOT NULL
 );
+
+-- base (seed only): fictional smart-city sensors, served by sensors-mcp. Invented readings; the water ones follow the local river gauge.
+CREATE TABLE iot_sensor (
+    sensor_id    TEXT PRIMARY KEY,
+    kind         TEXT NOT NULL CHECK (kind IN ('WATER_LEVEL', 'RAIN', 'AIR_QUALITY')),
+    name         TEXT NOT NULL,
+    town         TEXT NOT NULL,
+    lat          REAL NOT NULL,
+    lng          REAL NOT NULL,
+    owner        TEXT NOT NULL,
+    enodeb_name  TEXT NOT NULL REFERENCES tower (enodeb_name),
+    unit         TEXT NOT NULL,
+    warn_value   REAL NOT NULL,
+    danger_value REAL NOT NULL
+);
+CREATE INDEX idx_sensor_geo ON iot_sensor (lat, lng);
+
+CREATE TABLE iot_reading (
+    sensor_id TEXT NOT NULL REFERENCES iot_sensor (sensor_id),
+    t_min     INTEGER NOT NULL,
+    value     REAL NOT NULL,
+    PRIMARY KEY (sensor_id, t_min)
+);
 """
