@@ -10,9 +10,10 @@ from menara_core.scenario import Scenario
 from menara_core.seed.towers import TowerRow
 
 
-def build_actions(conn: sqlite3.Connection, rng: random.Random, scenario: Scenario, towers: list[TowerRow]) -> None:
+def policy_settings(scenario: Scenario) -> dict[str, str]:
+    """The policy defaults the seed writes and a reset restores."""
     policy = scenario.policy
-    settings = {
+    return {
         "kill_switch": "0",
         "auto_allow_max_subscribers": str(policy.auto_allow_max_subscribers),
         "auto_allow_min_confidence": str(policy.auto_allow_min_confidence),
@@ -21,7 +22,10 @@ def build_actions(conn: sqlite3.Connection, rng: random.Random, scenario: Scenar
         "max_actions_per_hour": str(policy.max_actions_per_hour),
         "token_ttl_s": str(policy.token_ttl_s),
     }
-    conn.executemany("INSERT INTO policy_setting VALUES (?, ?)", sorted(settings.items()))
+
+
+def build_actions(conn: sqlite3.Connection, rng: random.Random, scenario: Scenario, towers: list[TowerRow]) -> None:
+    conn.executemany("INSERT INTO policy_setting VALUES (?, ?)", sorted(policy_settings(scenario).items()))
 
     conn.executemany(
         "INSERT INTO seed_meta VALUES (?, ?)",
