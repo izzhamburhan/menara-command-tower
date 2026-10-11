@@ -141,11 +141,11 @@ def test_a_live_run_streams_calls_results_and_one_final(make: Callable[[list[Rep
     assert started.status_code == 200 and started.json()["run_id"]
     state = wait_for(client, finished)
     types = [e["type"] for e in state["events"]]
-    assert types == ["say", "call", "result", "final"] and state["status"] == "done"
+    assert types == ["say", "call", "result", "map", "final"] and state["status"] == "done"
     assert state["events"][-1]["text"] == "KKRI-0142 is down."
     assert client.get("/api/clock").json()["t_min"] == 20  # the run started the scenario clock where asked
     later = client.get("/api/agent/events", params={"since": 2}).json()
-    assert [e["type"] for e in later["events"]] == ["result", "final"] and later["next"] == 4
+    assert [e["type"] for e in later["events"]] == ["result", "map", "final"] and later["next"] == 5
 
 
 def test_the_human_approves_with_a_button_and_the_model_gets_the_token(
@@ -212,3 +212,41 @@ def test_demo_advance_clock_is_handled_by_the_runner_not_the_servers(
     client.post("/api/agent/run", json={"mode": "live", "task": "Wait", "clock": 10})
     wait_for(client, finished)
     assert hub.calls == [] and client.get("/api/clock").json()["t_min"] == 40
+    assert hub.calls == [] and client.get("/api/clock").json()["t_min"] == 40
+
+def test_a_map_event_follows_a_result_event_with_the_same_step(make: Callable[[list[Reply] | None], TestClient]) -> None:
+    client = make([status_call(), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Investigate", "clock": 20})
+    events = wait_for(client, finished)["events"]
+    kinds = [e["type"] for e in events]
+    assert kinds.index("map") == kinds.index("result") + 1
+    event = next(e for e in events if e["type"] == "map")
+    assert event["step"] == 1 and event["effects"][0]["kind"] == "focus" and event["effects"][0]["tone"] == "bad"
+    assert "KKRI-0142" in event["effects"][0]["label"]
+
+
+def test_a_failing_effect_builder_does_not_break_the_run(
+    make: Callable[[list[Reply] | None], TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*args: Any, **kwargs: Any) -> list[dict[str, Any]]:
+        raise RuntimeError("bad shape")
+
+    monkeypatch.setattr("menara_demo.runs.effects_for", boom)
+    client = make([status_call(), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Investigate", "clock": 20})
+    state = wait_for(client, finished)
+    assert state["status"] == "done" and not [e for e in state["events"] if e["type"] == "map"]
+
+
+def test_effects_are_built_from_the_full_result_not_the_shortened_event_text(
+    hub: FakeHub, make: Callable[[list[Reply] | None], TestClient]
+) -> None:
+    async def long_call(name: str, arguments: dict[str, Any]) -> str:
+        return json.dumps({"synthetic": True, "data": {"status": "DOWN", "padding": "x" * 20000}})
+
+    hub.call = long_call  # type: ignore[method-assign]
+    client = make([status_call(), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Investigate", "clock": 20})
+    events = wait_for(client, finished)["events"]
+    shown = next(e for e in events if e["type"] == "result")["text"]
+    assert len(shown) < 20000 and any(e["type"] == "map" for e in events)

@@ -13,7 +13,7 @@ from menara_core.seed.context import build_context
 from menara_core.seed.movement import build_movement
 from menara_core.seed.people import build_people
 from menara_core.seed.schema import SCHEMA
-from menara_core.seed.sites import build_sites
+from menara_core.seed.sites import build_malls, build_sites
 
 DEFAULT_TOWER_COUNT = 1200
 DEFAULT_SEED = 42
@@ -142,6 +142,7 @@ def build(
         build_people(conn, rng, scenario, everything)
         build_context(conn, rng, scenario, everything)
         build_sites(conn, rng, scenario, everything)
+        build_malls(conn, seed, scenario, everything)  # own random stream
         build_actions(conn, rng, scenario, everything)
         build_movement(conn, seed, scenario)  # last, with its own random stream, so older tables are unchanged
         conn.commit()

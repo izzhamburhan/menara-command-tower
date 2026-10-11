@@ -27,7 +27,7 @@ from user_mcp.models import (
 
 SOURCE = "user-mcp"
 MAX_WINDOW_MIN = 1440
-MAX_TRAIL_WINDOW_MIN = 2880
+MAX_TRAIL_WINDOW_MIN = 40320  # four weeks
 MAX_LIST_LIMIT = 500
 MIN_RADIUS_KM, MAX_RADIUS_KM = 0.1, 100.0
 # Where each subscriber is at the scenario clock: their latest visit that has started.

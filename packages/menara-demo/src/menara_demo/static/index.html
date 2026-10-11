@@ -4,70 +4,142 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Menara Demo</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
-    --bg: #f5f6f8; --panel: #ffffff; --text: #1d2330; --muted: #6a7384; --line: #dde1e8; --accent: #2457d6;
-    --up: #2e9e5b; --degraded: #e0a100; --down: #d64545; --unknown: #8a8f98; --poor: #e8742a;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #14171d; --panel: #1c2028; --text: #e6e9ef; --muted: #98a1b3; --line: #2b313c; --accent: #7aa2ff; }
+    color-scheme: dark;
+    --bg: #080d1a; --panel: #101a30; --panel2: #162341; --text: #e8eefc; --muted: #9fb0cf; --line: #263556;
+    --accent: #38e1ff; --accent2: #a66bff; --up: #2ee59d; --degraded: #ffc83d; --down: #ff4d6d; --info: #5aa9ff; --unknown: #8a93a8; --poor: #ff8a3d;
+    --glass: rgba(14, 22, 42, 0.84);
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
-  body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
-  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
-  header h1 { font-size: 16px; margin: 0; }
-  .banner { background: #fff3c4; color: #5b4500; border: 1px solid #e6cf7a; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+  body { font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+  #map { position: fixed; inset: 0; background: var(--bg); }
+  .glass { background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+
+  header { position: fixed; z-index: 1000; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 14px; border-radius: 14px; }
+  header h1 { font-size: 16px; margin: 0; letter-spacing: .04em; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .live { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--up); margin-right: 8px; box-shadow: 0 0 10px var(--up); animation: blink 2s infinite; }
+  .banner { background: rgba(255, 200, 61, 0.12); color: var(--degraded); border: 1px solid rgba(255, 200, 61, 0.5); border-radius: 999px; padding: 2px 12px; font-size: 12px; font-weight: 700; letter-spacing: .06em; }
   .clock { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: auto; }
-  .clock .now { font-variant-numeric: tabular-nums; font-weight: 600; }
-  button, select, input, textarea { font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
-  button { cursor: pointer; }
-  button:hover { border-color: var(--accent); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 460px; }
-  #map { min-height: 300px; background: #dfe5ee; }
-  aside { background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .clock .now { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); text-shadow: 0 0 12px rgba(56, 225, 255, 0.5); }
+  button, select, input, textarea { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; }
+  button { cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .1s; }
+  button:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 12px rgba(56, 225, 255, 0.3); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: linear-gradient(135deg, #1b8fb3, #6b3fd1); border-color: transparent; color: #fff; font-weight: 600; }
+  input[type=range] { padding: 0; accent-color: var(--accent); }
+
+  #statsStrip { position: fixed; z-index: 999; top: 66px; left: 12px; display: flex; flex-wrap: wrap; gap: 8px; max-width: calc(100vw - 500px); }
+  .chip { padding: 6px 14px; border-radius: 12px; min-width: 92px; }
+  .chip b { display: block; font-size: 20px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .chip span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .chip.up b { color: var(--up); text-shadow: 0 0 12px rgba(46, 229, 157, 0.5); }
+  .chip.deg b { color: var(--degraded); }
+  .chip.down b { color: var(--down); text-shadow: 0 0 12px rgba(255, 77, 109, 0.6); }
+  .chip.info b { color: var(--info); }
+  .chip.down.alarm { animation: alarm 1.6s infinite; }
+
+  #dock { position: fixed; z-index: 1000; top: 132px; right: 12px; bottom: 12px; width: 440px; border-radius: 16px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
   .tabs { display: flex; border-bottom: 1px solid var(--line); }
-  .tabs button { flex: 1; border: 0; border-radius: 0; padding: 8px; background: transparent; border-bottom: 2px solid transparent; }
-  .tabs button.on { border-bottom-color: var(--accent); font-weight: 600; }
+  .tabs button { flex: 1; border: 0; border-radius: 0; padding: 10px 8px; background: transparent; border-bottom: 2px solid transparent; color: var(--muted); }
+  .tabs button.on { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; box-shadow: none; }
   .pane { display: none; padding: 12px; overflow: auto; flex: 1; }
   .pane.on { display: block; }
   .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
   .muted { color: var(--muted); }
   .small { font-size: 12px; }
   table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; font-size: 13px; }
-  th { text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 3px 6px; position: sticky; top: 0; background: var(--panel); }
+  th { text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); padding: 3px 6px; position: sticky; top: -12px; background: var(--panel); }
   td { padding: 3px 6px; border-bottom: 1px solid var(--line); }
   tr.pick { cursor: pointer; }
-  tr.pick:hover td { background: rgba(36, 87, 214, 0.08); }
-  tr.on td { background: rgba(36, 87, 214, 0.16); }
-  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: baseline; }
-  .box { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
-  .warn { background: #fff3c4; color: #5b4500; border-color: #e6cf7a; }
-  .err { background: #fde3e3; color: #7a1d1d; border-color: #e8a7a7; }
-  h2 { font-size: 13px; margin: 10px 0 2px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-  pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; overflow: auto; max-height: 52vh; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+  tr.pick:hover td { background: rgba(56, 225, 255, 0.08); }
+  tr.on td { background: rgba(56, 225, 255, 0.18); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: baseline; box-shadow: 0 0 8px currentColor; }
+  .box { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; background: rgba(255, 255, 255, 0.02); }
+  .warn { background: rgba(255, 200, 61, 0.1); color: #ffe08a; border-color: rgba(255, 200, 61, 0.5); }
+  .err { background: rgba(255, 77, 109, 0.12); color: #ffb3c0; border-color: rgba(255, 77, 109, 0.5); }
+  h2 { font-size: 12px; margin: 12px 0 2px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  pre { background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); border-radius: 8px; padding: 8px; overflow: auto; max-height: 52vh; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
   textarea { width: 100%; min-height: 90px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
   select { max-width: 100%; }
-  @media (max-width: 900px) { main { grid-template-columns: 1fr; grid-template-rows: 45vh 1fr; } aside { border-left: 0; border-top: 1px solid var(--line); } }
-  .step { padding: 6px 10px; }
+
+  .step { padding: 6px 10px; animation: slidein .3s ease-out; }
+  .step.has-map { cursor: pointer; }
+  .step.has-map:hover { border-color: var(--accent); }
   .step.ok { border-left: 4px solid var(--up); }
   .step.bad { border-left: 4px solid var(--down); }
   .step .name { font-weight: 600; }
+  .step .where { float: right; font-size: 11px; color: var(--accent); }
   .step .args { color: var(--muted); font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-word; }
   .step details pre { max-height: 220px; margin: 4px 0 0; }
   .step summary { cursor: pointer; font-size: 12px; color: var(--muted); }
-  .say { font-size: 13px; margin: 4px 2px 8px; padding-left: 8px; border-left: 3px solid var(--accent); }
+  .say { font-size: 13px; margin: 4px 2px 8px; padding-left: 8px; border-left: 3px solid var(--accent2); animation: slidein .3s ease-out; }
   .final { white-space: pre-wrap; }
   .decide { display: flex; gap: 8px; margin-top: 6px; }
   .story { white-space: pre-wrap; }
   textarea.task { min-height: 70px; font-family: inherit; font-size: 13px; }
+
+  .badge { display: inline-block; flex: none; white-space: nowrap; min-width: 20px; text-align: center; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 6px; margin-right: 6px; background: var(--panel2); border: 1px solid var(--line); }
+  .badge.home { color: var(--info); } .badge.weekday { color: var(--degraded); } .badge.weekend { color: var(--accent2); }
+  .routine { display: flex; gap: 6px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+
+  #legend { position: fixed; z-index: 999; left: 12px; bottom: 28px; padding: 8px 12px; border-radius: 12px; font-size: 12px; color: var(--muted); display: grid; gap: 3px; }
+  #legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  #replayBar { position: fixed; z-index: 1000; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 8px 14px; border-radius: 14px; display: none; gap: 10px; align-items: center; min-width: 340px; max-width: calc(100vw - 500px); }
+  #replayBar.on { display: flex; }
+  #replayBar input[type=range] { flex: 1; }
+  #replayTime { font-variant-numeric: tabular-nums; font-size: 12px; min-width: 150px; color: var(--accent); }
+
+  /* map effects */
+  .fx { position: relative; width: 0; height: 0; animation: fadein .5s ease-out; }
+  .fx .core { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; background: var(--c); box-shadow: 0 0 14px var(--c), 0 0 4px var(--c) inset; }
+  .fx .ring { position: absolute; left: -16px; top: -16px; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--c); animation: pulse 2s ease-out infinite; }
+  .fx .ring.b { animation-delay: 1s; }
+  .fx .tag { position: absolute; left: 14px; top: -10px; white-space: nowrap; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 8px; background: rgba(8, 13, 26, 0.9); border: 1px solid var(--c); color: var(--text); }
+  .fx.pin .core { width: 18px; height: 18px; left: -9px; top: -9px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #07101f; box-shadow: 0 0 10px var(--c); }
+  .fx.pin .ring, .fx.pin .tag { display: none; }
+  .fx.pin:hover .tag { display: block; z-index: 5; }
+  .fx.pin.quiet .core { width: 12px; height: 12px; left: -6px; top: -6px; opacity: .85; }
+  .mover { width: 0; height: 0; }
+  .mover i { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent2); border: 2px solid #fff; box-shadow: 0 0 16px var(--accent2); }
+  path.fx-ring { animation: dash 1.4s linear infinite; }
+  path.fx-link, path.trail-line { animation: dash 1.1s linear infinite; }
+  path.fx-area { animation: fadein .8s ease-out; }
+  .leaflet-top.leaflet-left { top: 120px; }
+  .leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) brightness(.82) contrast(.92) saturate(.55); }  /* the light map, turned into a dark one */
+  .leaflet-container { background: var(--bg); font: inherit; }
+  .leaflet-tooltip { background: rgba(8, 13, 26, 0.92); color: var(--text); border: 1px solid var(--line); box-shadow: none; }
+  .leaflet-tooltip-top:before { border-top-color: var(--line); }
+  .leaflet-control-attribution { background: rgba(8, 13, 26, 0.7) !important; color: var(--muted) !important; }
+  .leaflet-control-attribution a { color: var(--muted) !important; }
+  .leaflet-bar a { background: var(--panel); color: var(--text); border-color: var(--line); }
+
+  @keyframes pulse { 0% { transform: scale(.4); opacity: .95; } 100% { transform: scale(2.6); opacity: 0; } }
+  @keyframes dash { to { stroke-dashoffset: -36; } }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slidein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes blink { 50% { opacity: .35; } }
+  @keyframes alarm { 50% { box-shadow: 0 0 22px rgba(255, 77, 109, 0.7); } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+  @media (max-width: 900px) {
+    #dock { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 50vh; }
+    #statsStrip { max-width: calc(100vw - 24px); top: 104px; }
+    .chip { min-width: 72px; padding: 4px 10px; }
+    #legend { display: none; }
+    #replayBar { bottom: calc(50vh + 16px); max-width: calc(100vw - 24px); min-width: 0; width: calc(100vw - 24px); }
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>Menara Command Center</h1>
+<div id="map"></div>
+<header class="glass">
+  <h1><span class="live"></span>Menara Command Center</h1>
   <span class="banner">DEMO &middot; SYNTHETIC DATA</span>
   <div class="clock">
     <span class="muted">Scenario time</span> <span class="now" id="clockNow">...</span>
@@ -79,57 +151,81 @@
     <button data-t="360" title="Power restored">360</button>
   </div>
 </header>
-<main>
-  <div id="map"></div>
-  <aside>
-    <div class="tabs">
-      <button id="tabArea" class="on">Map &amp; area</button>
-      <button id="tabStory">Story</button>
-      <button id="tabConsole">Console</button>
+<div id="statsStrip" aria-label="Network summary">
+  <div class="chip glass up"><b id="stUp">-</b><span>Towers up</span></div>
+  <div class="chip glass deg"><b id="stDeg">-</b><span>Degraded</span></div>
+  <div class="chip glass down" id="chipDown"><b id="stDown">-</b><span>Down</span></div>
+  <div class="chip glass info"><b id="stTickets">-</b><span>Tickets (cluster)</span></div>
+  <div class="chip glass info"><b id="stIncident">-</b><span>Incident</span></div>
+</div>
+
+<aside id="dock" class="glass">
+  <div class="tabs">
+    <button id="tabArea" class="on">Map &amp; area</button>
+    <button id="tabStory">Story</button>
+    <button id="tabConsole">Console</button>
+  </div>
+  <section id="paneArea" class="pane on">
+    <div class="row">
+      <button id="goKK">Kuala Krai (flood)</button>
+      <button id="goTawau">Tawau (commuters)</button>
+      <button id="goAll">All Malaysia</button>
     </div>
-    <section id="paneArea" class="pane on">
-      <div class="row">
-        <button id="goKK">Kuala Krai (flood)</button>
-        <button id="goTawau">Tawau (commuters)</button>
-        <button id="goAll">All Malaysia</button>
-      </div>
-      <div class="row small muted">Click the map to circle a place. Radius <input id="radius" type="range" min="1" max="50" value="15" style="width: 9em"> <b id="radiusLabel">15</b> km</div>
-      <div id="areaMsg" class="box muted">Loading...</div>
-      <div id="areaOut"></div>
-    </section>
-    <section id="paneStory" class="pane">
-      <div class="small muted" style="margin-bottom: 6px">Watch an agent work the flood incident through the real MCP servers. <b>Run live</b> lets DeepSeek decide each step. <b>Replay</b> follows a fixed script (no key needed). When policy needs a human, Approve or Reject appears in the timeline. Every run changes the demo data; re-seed for a clean start.</div>
-      <div class="row">
-        <button data-preset="full">Full incident</button>
-        <button data-preset="investigate">Investigate only</button>
-        <button data-preset="fix">Fix and verify</button>
-      </div>
-      <textarea id="storyTask" class="task" spellcheck="false" aria-label="Task for the agent"></textarea>
-      <div class="row" style="margin-top: 6px">
-        <span class="muted small">Start at minute</span> <input id="storyClock" type="number" min="-1440" max="720" value="12" style="width: 5em" aria-label="Start minute">
-        <button id="runLive" class="primary">Run live</button>
-        <button id="runReplay">Replay (no key)</button>
-        <button id="cancelRun" disabled>Cancel</button>
-      </div>
-      <div id="storyStatus" class="small muted" style="margin: 4px 0 8px"></div>
-      <div id="timeline"></div>
-    </section>
-    <section id="paneConsole" class="pane">
-      <div class="small muted" style="margin-bottom: 6px">Run any tool and see the raw response. The four human-only approval tools are not offered.</div>
-      <div class="row"><select id="toolSel" aria-label="Tool"></select> <button id="runTool" class="primary">Run</button></div>
-      <div id="toolDesc" class="small muted" style="margin-bottom: 6px"></div>
-      <textarea id="toolArgs" spellcheck="false" aria-label="Arguments as JSON"></textarea>
-      <div id="toolMeta" class="small muted" style="margin: 6px 0"></div>
-      <pre id="toolOut">Pick a tool and press Run.</pre>
-    </section>
-  </aside>
-</main>
+    <div class="row small muted">Click the map to circle a place. Radius <input id="radius" type="range" min="1" max="50" value="15" style="width: 9em"> <b id="radiusLabel">15</b> km</div>
+    <div id="areaMsg" class="box muted">Loading...</div>
+    <div id="areaOut"></div>
+  </section>
+  <section id="paneStory" class="pane">
+    <div class="small muted" style="margin-bottom: 6px">Watch an agent work the flood incident through the real MCP servers, and see it on the map. <b>Run live</b> lets DeepSeek decide each step. <b>Replay</b> follows a fixed script (no key needed). When policy needs a human, Approve or Reject appears in the timeline. Every run changes the demo data; re-seed for a clean start.</div>
+    <div class="row">
+      <button data-preset="full">Full incident</button>
+      <button data-preset="investigate">Investigate only</button>
+      <button data-preset="fix">Fix and verify</button>
+    </div>
+    <textarea id="storyTask" class="task" spellcheck="false" aria-label="Task for the agent"></textarea>
+    <div class="row" style="margin-top: 6px">
+      <span class="muted small">Start at minute</span> <input id="storyClock" type="number" min="-1440" max="720" value="12" style="width: 5em" aria-label="Start minute">
+      <button id="runLive" class="primary">Run live</button>
+      <button id="runReplay">Replay (no key)</button>
+      <button id="cancelRun" disabled>Cancel</button>
+    </div>
+    <label class="small muted"><input id="followMap" type="checkbox" checked style="vertical-align: middle"> Camera follows the run</label>
+    <div id="storyStatus" class="small muted" style="margin: 4px 0 8px"></div>
+    <div id="timeline"></div>
+  </section>
+  <section id="paneConsole" class="pane">
+    <div class="small muted" style="margin-bottom: 6px">Run any tool and see the raw response. The four human-only approval tools are not offered.</div>
+    <div class="row"><select id="toolSel" aria-label="Tool"></select> <button id="runTool" class="primary">Run</button></div>
+    <div id="toolDesc" class="small muted" style="margin-bottom: 6px"></div>
+    <textarea id="toolArgs" spellcheck="false" aria-label="Arguments as JSON"></textarea>
+    <div id="toolMeta" class="small muted" style="margin: 6px 0"></div>
+    <pre id="toolOut">Pick a tool and press Run.</pre>
+  </section>
+</aside>
+
+<div id="legend" class="glass" aria-label="Map legend">
+  <span><i style="background: var(--up); color: var(--up)"></i>Tower up</span>
+  <span><i style="background: var(--degraded); color: var(--degraded)"></i>Degraded</span>
+  <span><i style="background: var(--down); color: var(--down)"></i>Down</span>
+  <span><i style="background: var(--info); color: var(--info)"></i>Drone / info</span>
+  <span><i style="background: var(--accent2); color: var(--accent2)"></i>Subscriber trail</span>
+</div>
+
+<div id="replayBar" class="glass">
+  <button id="replayPlay" class="primary" aria-label="Play or pause the trail">Play</button>
+  <input id="replayScrub" type="range" min="0" max="1000" value="0" aria-label="Trail position">
+  <select id="replaySpeed" aria-label="Replay speed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option><option value="8">8x</option></select>
+  <span id="replayTime"></span>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 "use strict";
-const STATUS_COLOR = { UP: "#2e9e5b", DEGRADED: "#e0a100", DOWN: "#d64545", UNKNOWN: "#8a8f98" };
-const LABEL_COLOR = { GOOD: "#2e9e5b", FAIR: "#e0a100", POOR: "#e8742a", NO_SERVICE: "#d64545" };
+const STATUS_COLOR = { UP: "#2ee59d", DEGRADED: "#ffc83d", DOWN: "#ff4d6d", UNKNOWN: "#8a93a8" };
+const LABEL_COLOR = { GOOD: "#2ee59d", FAIR: "#ffc83d", POOR: "#ff8a3d", NO_SERVICE: "#ff4d6d" };
+const TONE = { ok: "#2ee59d", warn: "#ffc83d", bad: "#ff4d6d", info: "#5aa9ff" };
+const GLYPH = { mall: "M", school: "S", hospital: "H", clinic: "+", police: "P", fire: "F", enterprise: "E", tower: "T", drone: "D", ticket: "!" };
+const REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (selector) => document.querySelector(selector);
 
 function el(tag, props, ...kids) {
@@ -142,60 +238,123 @@ function el(tag, props, ...kids) {
   for (const kid of kids.flat()) if (kid !== null && kid !== undefined) node.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
   return node;
 }
-const dot = (color) => el("span", { class: "dot", style: "background:" + color });
+const dot = (color) => el("span", { class: "dot", style: "background:" + color + ";color:" + color });
 const fmt = (n) => (n === null || n === undefined ? "-" : Number(n).toLocaleString("en-US"));
 const when = (iso) => (iso ? iso.slice(5, 16).replace("T", " ") : "now");
 
+// One place for every fetch: a clear message when the server is down or is an old copy without the new routes.
+async function getJson(url, options) {
+  let response;
+  try { response = await fetch(url, options); } catch (error) { throw new Error("Cannot reach the demo server (" + error.message + "). Is it still running?"); }
+  if (!(response.headers.get("content-type") || "").includes("json")) {
+    throw new Error("The demo server answered " + response.status + " " + response.statusText + " for " + url + ". It is probably an old copy. Restart the demo (Ctrl+C, then start it again) and refresh this page.");
+  }
+  return { response, body: await response.json() };
+}
+const postJson = (url, payload) => getJson(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload || {}) });
+
 async function call(name, args) {
-  const response = await fetch("/api/call", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, arguments: args || {} }) });
-  const reply = await response.json();
-  if (!reply.ok) throw new Error(reply.error || response.statusText);
-  return reply;
+  const { body } = await postJson("/api/call", { name, arguments: args || {} });
+  if (!body.ok) throw new Error(body.error || "Call failed");
+  return body;
 }
 
 // ---------- state ----------
 const state = { lat: null, lng: null, radius: 15, sequence: 0, chosen: null };
-let map = null, towerMarkers = {}, circleLayer = null, trailLayer = null, towerLayer = null;
+let map = null, svg = null, towerMarkers = {}, circleLayer = null, trailLayer = null, towerLayer = null, downLayer = null, placeLayer = null, fxLayer = null;
 
 function setupMap() {
   if (typeof L === "undefined") {
-    $("#map").append(el("div", { class: "box err", style: "margin:12px" }, "The map library could not load (it needs internet). The Console tab still works."));
+    $("#map").append(el("div", { class: "box err", style: "margin: 140px 12px 12px" }, "The map library could not load (it needs internet). The Console tab still works."));
     return;
   }
-  map = L.map("map", { preferCanvas: true }).setView([4.2, 108], 6);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+  map = L.map("map", { preferCanvas: true, zoomControl: true }).setView([4.2, 108], 6);
+  svg = L.svg({ padding: 0.5 });
+  const tile = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+  let tileFails = 0;
+  tile.on("tileerror", () => { if (++tileFails === 1) $("#legend").append(el("span", { class: "small" }, "Map tiles unavailable (offline). Towers and events still draw.")); });
   towerLayer = L.layerGroup().addTo(map);
+  downLayer = L.layerGroup().addTo(map);
+  placeLayer = L.layerGroup().addTo(map);
   trailLayer = L.layerGroup().addTo(map);
+  fxLayer = L.layerGroup().addTo(map);
   map.on("click", (event) => place(event.latlng.lat, event.latlng.lng));
 }
 
-// ---------- clock ----------
+// ---------- clock and stats ----------
 async function loadClock() {
-  const clock = await (await fetch("/api/clock")).json();
-  $("#clockNow").textContent = "t=" + clock.t_min + " · " + when(clock.as_of);
-  $("#tmin").value = clock.t_min;
-  return clock;
+  const { body } = await getJson("/api/clock");
+  $("#clockNow").textContent = "t=" + body.t_min + " · " + when(body.as_of);
+  $("#tmin").value = body.t_min;
+  return body;
 }
 async function setClock(minute) {
-  const response = await fetch("/api/clock", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t_min: Number(minute) }) });
-  if (!response.ok) { message((await response.json()).error, "err"); return; }
+  const { response, body } = await postJson("/api/clock", { t_min: Number(minute) });
+  if (!response.ok) { message(body.error, "err"); return; }
   await loadClock();
   await loadTowers();
   await runArea();
+  refreshStats();
+}
+async function setClockQuiet(minute) {
+  await postJson("/api/clock", { t_min: minute });
+  await loadClock();
+  await loadTowers();
+}
+
+function animateNumber(node, to) {
+  const target = Number(to);
+  if (REDUCE || !Number.isFinite(target)) { node.textContent = to; return; }
+  const from = Number(node.dataset.value || 0);
+  node.dataset.value = target;
+  const started = performance.now();
+  const step = (now) => {
+    const f = Math.min(1, (now - started) / 600);
+    node.textContent = Math.round(from + (target - from) * f).toLocaleString("en-US");
+    if (f < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function renderStats(counts) {
+  animateNumber($("#stUp"), counts.UP || 0);
+  animateNumber($("#stDeg"), counts.DEGRADED || 0);
+  animateNumber($("#stDown"), counts.DOWN || 0);
+  $("#chipDown").classList.toggle("alarm", (counts.DOWN || 0) > 0);
+}
+let statsTimer = null;
+function refreshStats() {
+  clearTimeout(statsTimer);
+  statsTimer = setTimeout(async () => {
+    try {
+      const cluster = await call("ticket_cluster_by_location", { ticket_id: "TK-88213", radius_km: 15, window_min: 30 });
+      animateNumber($("#stTickets"), cluster.result.data.count);
+    } catch (error) { $("#stTickets").textContent = "0"; $("#stTickets").dataset.value = 0; }
+    try {
+      const list = await call("ontology_list_incidents", {});
+      const incidents = list.result.data.incidents || [];
+      $("#stIncident").textContent = incidents.length ? incidents[incidents.length - 1].status : "none";
+    } catch (error) { $("#stIncident").textContent = "-"; }
+  }, 400);
 }
 
 // ---------- towers on the map ----------
 async function loadTowers() {
   if (!map) return;
   const reply = await call("tower_list_in_bbox", { min_lat: 0, min_lng: 95, max_lat: 8, max_lng: 120, limit: 2000 });
-  towerLayer.clearLayers();
+  towerLayer.clearLayers(); downLayer.clearLayers();
   towerMarkers = {};
+  const counts = { UP: 0, DEGRADED: 0, DOWN: 0, UNKNOWN: 0 };
   for (const tower of reply.result.data.towers) {
-    const marker = L.circleMarker([tower.lat, tower.lng], { radius: 4, weight: 1, color: STATUS_COLOR[tower.status] || STATUS_COLOR.UNKNOWN, fillOpacity: 0.75 });
+    counts[tower.status] = (counts[tower.status] || 0) + 1;
+    const color = STATUS_COLOR[tower.status] || STATUS_COLOR.UNKNOWN;
+    L.circleMarker([tower.lat, tower.lng], { radius: 9, weight: 0, fillColor: color, fillOpacity: 0.1, interactive: false }).addTo(towerLayer);
+    const marker = L.circleMarker([tower.lat, tower.lng], { radius: 3.5, weight: 1, color, fillColor: color, fillOpacity: 0.9 });
     marker.bindTooltip(tower.enodeb_name + " · " + tower.status + " · " + tower.town);
     marker.addTo(towerLayer);
     towerMarkers[tower.enodeb_name] = marker;
+    if (tower.status === "DOWN" && counts.DOWN <= 60) L.marker([tower.lat, tower.lng], { icon: fxIcon({ tone: "bad", label: "", kind: "focus" }), interactive: false, keyboard: false }).addTo(downLayer);
   }
+  renderStats(counts);
 }
 
 // ---------- area ----------
@@ -208,11 +367,13 @@ function message(text, kind) {
 
 function place(lat, lng) {
   state.lat = lat; state.lng = lng; state.chosen = null;
+  stopReplay();
   if (map) {
     if (circleLayer) circleLayer.remove();
-    circleLayer = L.circle([lat, lng], { radius: state.radius * 1000, color: "#2457d6", weight: 2, fillOpacity: 0.06 }).addTo(map);
+    circleLayer = L.circle([lat, lng], { radius: state.radius * 1000, color: "#38e1ff", weight: 2, fillOpacity: 0.06, className: "fx-ring", renderer: svg, dashArray: "8 8" }).addTo(map);
   }
   trailLayer && trailLayer.clearLayers();
+  placeLayer && placeLayer.clearLayers();
   runArea();
 }
 
@@ -235,7 +396,7 @@ async function runArea() {
 function renderArea(towers, people) {
   message("", "muted");
   const inside = new Set(towers.towers.map((t) => t.enodeb_name));
-  for (const [name, marker] of Object.entries(towerMarkers)) marker.setStyle({ radius: inside.has(name) ? 7 : 4, weight: inside.has(name) ? 2 : 1 });
+  for (const [name, marker] of Object.entries(towerMarkers)) marker.setStyle({ radius: inside.has(name) ? 6.5 : 3.5, weight: inside.has(name) ? 2 : 1 });
   const byTower = Object.fromEntries(people.towers.map((t) => [t.enodeb_name, t]));
   const out = $("#areaOut");
   out.replaceChildren();
@@ -263,7 +424,7 @@ function renderArea(towers, people) {
   } else {
     const rows = people.subscribers.map((s) => el("tr", { class: "pick", "data-hash": s.msisdn_hash, onclick: () => showTrail(s.msisdn_hash) },
       el("td", {}, s.msisdn_hash.slice(0, 8) + "…"), el("td", {}, s.enodeb_name),
-      el("td", {}, dot(LABEL_COLOR[s.latest_label] || "#8a8f98"), s.attached ? (s.latest_label || "-") : "detached"),
+      el("td", {}, dot(LABEL_COLOR[s.latest_label] || "#8a93a8"), s.attached ? (s.latest_label || "-") : "detached"),
       el("td", {}, s.cell_changes_24h)));
     out.append(el("table", {}, el("tr", {}, ["Subscriber", "Tower", "Service", "Moves 24h"].map((h) => el("th", {}, h))), rows));
     if (people.truncated) out.append(el("div", { class: "muted small" }, "Showing " + people.returned + " of " + fmt(people.subscribers_total) + " sampled subscribers."));
@@ -271,6 +432,7 @@ function renderArea(towers, people) {
   if (state.chosen) showTrail(state.chosen);
 }
 
+// ---------- a subscriber's trail, its replay and its routine ----------
 async function showTrail(hash) {
   state.chosen = hash;
   document.querySelectorAll("tr.pick").forEach((row) => row.classList.toggle("on", row.dataset.hash === hash));
@@ -281,11 +443,14 @@ async function showTrail(hash) {
     const reply = await call("user_get_trail", { msisdn_hash: hash, window_min: 1440 });
     const trail = reply.result.data;
     target.replaceChildren(el("h2", {}, "Trail · " + hash.slice(0, 8) + "…"),
-      el("div", { class: "small muted" }, trail.moves + " moves · " + trail.distinct_towers + " towers · last 24 h from " + when(trail.window_start) + " (cell level only)"),
+      el("div", { class: "small muted" }, trail.moves + " moves · " + trail.distinct_towers + " towers · last 24 h from " + when(trail.window_start) + " (cell level only, synthetic subscriber)"),
       el("table", {}, el("tr", {}, ["#", "Tower", "From", "To", "Min"].map((h) => el("th", {}, h))),
         trail.segments.map((s, i) => el("tr", {}, el("td", {}, i + 1), el("td", {}, s.enodeb_name), el("td", {}, when(s.arrived_at)), el("td", {}, s.left_at ? when(s.left_at) : "now"), el("td", {}, s.duration_min)))));
-    target.append(el("button", { onclick: () => explainTrail(hash) }, "Explain this trail (LLM)"), el("div", { id: "storyOut" }));
+    target.append(el("h2", {}, "Routine (last 4 weeks)"), el("div", { id: "routineOut", class: "small muted" }, "Counting visits..."),
+      el("button", { onclick: () => explainTrail(hash), style: "margin-top: 8px" }, "Explain this trail (LLM)"), el("div", { id: "storyOut" }));
     drawTrail(trail.segments);
+    setupReplay(trail);
+    showRoutines(hash);
     target.scrollIntoView({ block: "nearest" });
   } catch (error) {
     target.replaceChildren(el("div", { class: "box err" }, error.message));
@@ -296,14 +461,141 @@ function drawTrail(segments) {
   if (!map) return;
   trailLayer.clearLayers();
   const points = segments.map((s) => [s.cell_lat, s.cell_lng]);
-  if (points.length > 1) L.polyline(points, { color: "#7a3cff", weight: 3, opacity: 0.85 }).addTo(trailLayer);
+  if (points.length > 1) L.polyline(points, { color: "#a66bff", weight: 3, opacity: 0.9, dashArray: "8 10", className: "trail-line", renderer: svg }).addTo(trailLayer);
   segments.forEach((s, i) => {
-    L.circleMarker(points[i], { radius: 9, color: "#7a3cff", weight: 2, fillColor: s.current ? "#7a3cff" : "#ffffff", fillOpacity: 1 })
+    L.circleMarker(points[i], { radius: 8, color: "#a66bff", weight: 2, fillColor: s.current ? "#a66bff" : "#0b1224", fillOpacity: 1 })
       .bindTooltip("#" + (i + 1) + " " + s.enodeb_name + " " + when(s.arrived_at) + (s.current ? " (now)" : ""), { permanent: points.length <= 6 })
       .addTo(trailLayer);
   });
-  if (points.length > 1) map.fitBounds(L.latLngBounds(points).pad(0.4));
+  const bounds = points.length > 1 ? L.latLngBounds(points).pad(0.4) : null;
+  if (bounds) (REDUCE ? map.fitBounds(bounds) : map.flyToBounds(bounds, { duration: 1 }));
   else if (points.length === 1) map.setView(points[0], Math.max(map.getZoom(), 10));
+}
+
+const replay = { segs: [], t0: 0, t1: 0, now: 0, timer: null, marker: null, playing: false };
+const GLIDE_MS = 15 * 60000;
+function stopReplay() {
+  clearInterval(replay.timer); replay.playing = false;
+  if (replay.marker) { replay.marker.remove(); replay.marker = null; }
+  $("#replayBar").classList.remove("on");
+  $("#replayPlay").textContent = "Play";
+}
+function replayPosition(ms) {
+  const segs = replay.segs;
+  let i = 0;
+  while (i + 1 < segs.length && segs[i + 1].at <= ms) i++;
+  const here = segs[i];
+  if (i > 0 && ms - here.at < GLIDE_MS) {
+    const f = (ms - here.at) / GLIDE_MS, from = segs[i - 1];
+    return { lat: from.lat + (here.lat - from.lat) * f, lng: from.lng + (here.lng - from.lng) * f, name: here.name };
+  }
+  return { lat: here.lat, lng: here.lng, name: here.name };
+}
+function drawReplay() {
+  if (!replay.segs.length || !map) return;
+  const at = replayPosition(replay.now);
+  if (!replay.marker) replay.marker = L.marker([at.lat, at.lng], { icon: L.divIcon({ className: "mover", html: "<i></i>", iconSize: [0, 0] }), interactive: false, zIndexOffset: 2000 }).addTo(map);
+  replay.marker.setLatLng([at.lat, at.lng]);
+  $("#replayTime").textContent = new Date(replay.now + 8 * 3600000).toISOString().slice(5, 16).replace("T", " ") + " · near " + at.name;
+  $("#replayScrub").value = Math.round(((replay.now - replay.t0) / Math.max(1, replay.t1 - replay.t0)) * 1000);
+}
+function setupReplay(trail) {
+  stopReplay();
+  const segs = trail.segments.map((s) => ({ lat: s.cell_lat, lng: s.cell_lng, name: s.enodeb_name, at: Date.parse(s.arrived_at) }));
+  if (segs.length < 2) return;
+  const last = trail.segments[trail.segments.length - 1];
+  replay.segs = segs;
+  replay.t0 = Math.max(segs[0].at, Date.parse(trail.window_start));
+  replay.t1 = segs[segs.length - 1].at + Math.max(1, last.duration_min) * 60000;
+  replay.now = replay.t0;
+  $("#replayBar").classList.add("on");
+  drawReplay();
+}
+function playReplay() {
+  if (replay.playing) { clearInterval(replay.timer); replay.playing = false; $("#replayPlay").textContent = "Play"; return; }
+  if (replay.now >= replay.t1) replay.now = replay.t0;
+  replay.playing = true; $("#replayPlay").textContent = "Pause";
+  replay.timer = setInterval(() => {
+    replay.now += (60 * 60000 / 20) * Number($("#replaySpeed").value);  // 1x: one simulated hour per second
+    if (replay.now >= replay.t1) { replay.now = replay.t1; clearInterval(replay.timer); replay.playing = false; $("#replayPlay").textContent = "Play"; }
+    drawReplay();
+  }, 50);
+}
+$("#replayPlay").onclick = playReplay;
+$("#replayScrub").oninput = (event) => { replay.now = replay.t0 + (Number(event.target.value) / 1000) * (replay.t1 - replay.t0); drawReplay(); };
+
+async function showRoutines(hash) {
+  const out = $("#routineOut");
+  try {
+    const { response, body } = await getJson("/api/trail/routines?msisdn_hash=" + hash);
+    if (!response.ok) throw new Error(body.error);
+    if (state.chosen !== hash || !$("#routineOut")) return;
+    if (!body.routines.length) { out.textContent = "No routine yet: this synthetic subscriber has no repeated stops."; return; }
+    out.replaceChildren(...body.routines.map((r) => el("div", { class: "routine" }, el("span", { class: "badge " + r.kind }, r.kind), el("span", {}, r.sentence))),
+      el("div", { class: "small muted", style: "margin-top: 6px" }, "Synthetic subscriber. Inferred from cell level data (accurate to about a kilometre), so places are 'near', never 'at'. Places are synthetic."));
+    drawRoutinePlaces(body);
+  } catch (error) {
+    out.replaceChildren(el("div", { class: "box err" }, error.message));
+  }
+}
+function drawRoutinePlaces(reply) {
+  if (!map) return;
+  placeLayer.clearLayers();
+  const towers = Object.fromEntries(reply.facts.towers.map((t) => [t.tower, t]));
+  for (const r of reply.routines) {
+    const tower = towers[r.tower];
+    if (!tower) continue;
+    const site = tower.nearby_sites[0];
+    const spot = site ? [site.lat, site.lng] : [tower.lat, tower.lng];
+    const label = (r.kind === "home" ? "Home" : r.kind === "weekday" ? "Weekdays" : "Weekends") + (site ? " · " + site.name : " · no known site");
+    L.marker(spot, { icon: fxIcon({ tone: r.kind === "weekend" ? "info" : r.kind === "weekday" ? "warn" : "ok", label, kind: "pin", icon: site ? site.kind.toLowerCase() : "tower" }), keyboard: false }).addTo(placeLayer);
+  }
+}
+
+// ---------- map effects from the story ----------
+function fxIcon(effect) {
+  const color = TONE[effect.tone] || TONE.info;
+  const node = el("div", { class: "fx " + (effect.kind === "pin" ? "pin" : "focus") + (effect.quiet ? " quiet" : ""), style: "--c:" + color },
+    el("i", { class: "ring" }), el("i", { class: "ring b" }), el("i", { class: "core" }, effect.kind === "pin" ? GLYPH[effect.icon] || "" : ""), effect.label ? el("span", { class: "tag" }, effect.label) : null);
+  return L.divIcon({ className: "", html: node, iconSize: [0, 0] });
+}
+const fx = { byStep: {}, focused: {} };
+function clearEffects() { fx.byStep = {}; fx.focused = {}; fxLayer && fxLayer.clearLayers(); }
+function drawEffects(effects, step) {
+  if (!map) return;
+  const layers = [];
+  const spots = [];
+  let bounds = null;
+  for (const e of effects) {
+    const color = TONE[e.tone] || TONE.info;
+    if (e.kind === "ring" || e.kind === "area") {
+      const circle = L.circle([e.lat, e.lng], { radius: (e.radius_km || 1) * 1000, color, weight: 2, fillColor: color, fillOpacity: e.kind === "area" ? 0.2 : 0.05, dashArray: e.kind === "ring" ? "10 8" : null, className: "fx-" + e.kind, renderer: svg }).bindTooltip(e.label);
+      circle.addTo(fxLayer); layers.push(circle);
+      bounds = bounds ? bounds.extend(circle.getBounds()) : circle.getBounds();
+    } else if (e.kind === "link") {
+      const line = L.polyline([[e.lat, e.lng], e.to], { color, weight: 2.5, dashArray: "6 8", className: "fx-link", renderer: svg }).bindTooltip(e.label);
+      line.addTo(fxLayer); layers.push(line);
+      spots.push([e.lat, e.lng], e.to);
+    } else {
+      const marker = L.marker([e.lat, e.lng], { icon: fxIcon({ ...e, quiet: effects.length > 12 }), keyboard: false, zIndexOffset: e.kind === "focus" ? 1000 : 0 });
+      if (e.kind === "focus") {  // one label per tower: a later step replaces the earlier one instead of stacking on it
+        const key = e.lat.toFixed(4) + "," + e.lng.toFixed(4);
+        if (fx.focused[key]) fx.focused[key].remove();
+        fx.focused[key] = marker;
+      }
+      marker.addTo(fxLayer); layers.push(marker);
+      spots.push([e.lat, e.lng]);
+    }
+  }
+  if (spots.length) bounds = bounds ? bounds.extend(L.latLngBounds(spots)) : L.latLngBounds(spots);
+  fx.byStep[step] = { layers, bounds, single: spots.length === 1 && !layers.some((l) => l instanceof L.Circle) ? spots[0] : null };
+  if ($("#followMap").checked) focusStep(step);
+}
+function focusStep(step) {
+  const entry = fx.byStep[step];
+  if (!entry || !map) return;
+  if (entry.single) { REDUCE ? map.setView(entry.single, 11) : map.flyTo(entry.single, Math.max(map.getZoom(), 11), { duration: 1 }); }
+  else if (entry.bounds) { const padded = entry.bounds.pad(0.2); REDUCE ? map.fitBounds(padded, { maxZoom: 12 }) : map.flyToBounds(padded, { duration: 1.1, maxZoom: 12 }); }
 }
 
 // ---------- presets and controls ----------
@@ -312,16 +604,12 @@ async function preset(minute, lat, lng, radius, zoom) {
   if (minute !== null) { const clock = await loadClock(); if (clock.t_min !== minute) await setClockQuiet(minute); }
   if (map && zoom) map.setView([lat, lng], zoom);
   place(lat, lng);
-}
-async function setClockQuiet(minute) {
-  await fetch("/api/clock", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t_min: minute }) });
-  await loadClock();
-  await loadTowers();
+  refreshStats();
 }
 
 $("#goKK").onclick = () => preset(12, 5.531, 102.197, 15, 10);
 $("#goTawau").onclick = () => preset(150, 4.214, 117.857, 10, 11);
-$("#goAll").onclick = () => { state.lat = null; state.chosen = null; if (circleLayer) circleLayer.remove(); trailLayer && trailLayer.clearLayers(); if (map) map.setView([4.2, 108], 6); runArea(); };
+$("#goAll").onclick = () => { state.lat = null; state.chosen = null; stopReplay(); if (circleLayer) circleLayer.remove(); trailLayer && trailLayer.clearLayers(); placeLayer && placeLayer.clearLayers(); if (map) map.setView([4.2, 108], 6); runArea(); };
 $("#setClock").onclick = () => setClock($("#tmin").value);
 document.querySelectorAll(".clock button[data-t]").forEach((button) => (button.onclick = () => setClock(button.dataset.t)));
 let radiusTimer = null;
@@ -333,8 +621,6 @@ $("#radius").oninput = (event) => {
 
 // ---------- tabs and console ----------
 function tab(which) {
-  $("#tabArea").classList.toggle("on", which === "area"); $("#tabConsole").classList.toggle("on", which === "console");
-  $("#paneArea").classList.toggle("on", which === "area"); $("#paneConsole").classList.toggle("on", which === "console");
   for (const name of ["area", "story", "console"]) {
     const cap = name[0].toUpperCase() + name.slice(1);
     $("#tab" + cap).classList.toggle("on", which === name);
@@ -356,6 +642,7 @@ const EXAMPLES = {
   ticket_cluster_by_location: { ticket_id: "TK-88213" },
   user_list_on_tower: { enodeb_name: "KKRI-0143" },
   user_list_in_area: { lat: 5.531, lng: 102.197, radius_km: 10, limit: 20 },
+  sites_list_in_bbox: { min_lat: 4.0, min_lng: 117.7, max_lat: 4.4, max_lng: 118.0, kind: "MALL" },
   ontology_blast_radius: { site: "KKRI-0142" },
   grid_get_tower_power: { enodeb_name: "KKRI-0142" },
   flood_get_gauge: { gauge_id: "GAUGE-KKRI-01" },
@@ -372,7 +659,7 @@ function template(tool) {
   return out;
 }
 async function loadTools() {
-  tools = await (await fetch("/api/tools")).json();
+  tools = (await getJson("/api/tools")).body;
   const select = $("#toolSel");
   const groups = {};
   for (const tool of tools) (groups[tool.name.split("_")[0]] ||= []).push(tool);
@@ -410,24 +697,37 @@ const run = { since: 0, timer: null, cards: {}, live: false };
 $("#storyTask").value = PRESETS.full;
 document.querySelectorAll("[data-preset]").forEach((button) => (button.onclick = () => ($("#storyTask").value = PRESETS[button.dataset.preset])));
 
+function storyNote(text, kind) {
+  const box = $("#storyStatus");
+  box.className = "small " + (kind || "muted");
+  box.textContent = text;
+}
+
 async function storyStatus() {
-  const status = await (await fetch("/api/agent/status")).json();
-  run.live = status.live_available;
-  $("#runLive").disabled = !status.live_available || status.running;
-  $("#runReplay").disabled = status.running;
-  $("#cancelRun").disabled = !status.running;
-  $("#runLive").title = status.live_available ? "Model: " + status.model : "No DEEPSEEK_API_KEY in .env; restart the demo after adding it";
-  if (!status.live_available) $("#storyStatus").textContent = "Live is off: no DEEPSEEK_API_KEY in .env. Replay still works.";
-  return status;
+  try {
+    const { body } = await getJson("/api/agent/status");
+    run.live = body.live_available;
+    $("#runLive").disabled = !body.live_available || body.running;
+    $("#runReplay").disabled = body.running;
+    $("#cancelRun").disabled = !body.running;
+    $("#runLive").title = body.live_available ? "Model: " + body.model : "No DEEPSEEK_API_KEY in .env; restart the demo after adding it";
+    if (!body.live_available) storyNote("Live is off: no DEEPSEEK_API_KEY in .env. Replay still works.");
+    return body;
+  } catch (error) {
+    storyNote(error.message, "box err");
+    return { running: false };
+  }
 }
 
 async function startRun(mode) {
-  const response = await fetch("/api/agent/run", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode, task: $("#storyTask").value, clock: Number($("#storyClock").value) }) });
-  const reply = await response.json();
-  if (!response.ok) { $("#storyStatus").textContent = reply.error; return; }
+  try {
+    const { response, body } = await postJson("/api/agent/run", { mode, task: $("#storyTask").value, clock: Number($("#storyClock").value) });
+    if (!response.ok) { storyNote(body.error, "box err"); return; }
+  } catch (error) { storyNote(error.message, "box err"); return; }
   run.since = 0; run.cards = {};
+  clearEffects();
   $("#timeline").replaceChildren();
-  $("#storyStatus").textContent = (mode === "live" ? "Live run" : "Replay") + " started...";
+  storyNote((mode === "live" ? "Live run" : "Replay") + " started...");
   $("#runLive").disabled = $("#runReplay").disabled = true; $("#cancelRun").disabled = false;
   clearInterval(run.timer);
   run.timer = setInterval(pollRun, 700);
@@ -435,27 +735,29 @@ async function startRun(mode) {
 }
 
 async function pollRun() {
-  const state = await (await fetch("/api/agent/events?since=" + run.since)).json();
-  for (const event of state.events) renderEvent(event);
-  run.since = state.next;
-  if (state.events.length) { loadClock(); const pane = $("#paneStory"); pane.scrollTop = pane.scrollHeight; }
-  $("#storyStatus").textContent = state.pending_approval ? "Waiting for your decision..." : state.status === "running" ? "Running..." : "Finished: " + state.status;
-  if (state.status !== "running") {
+  let reply;
+  try { reply = (await getJson("/api/agent/events?since=" + run.since)).body; } catch (error) { storyNote(error.message, "box err"); clearInterval(run.timer); return; }
+  for (const event of reply.events) renderEvent(event);
+  run.since = reply.next;
+  if (reply.events.length) { loadClock(); const pane = $("#paneStory"); pane.scrollTop = pane.scrollHeight; }
+  storyNote(reply.pending_approval ? "Waiting for your decision..." : reply.status === "running" ? "Running..." : "Finished: " + reply.status);
+  if (reply.status !== "running") {
     clearInterval(run.timer);
     $("#runLive").disabled = !run.live; $("#runReplay").disabled = false; $("#cancelRun").disabled = true;
-    loadClock(); loadTowers();
+    loadClock(); loadTowers(); refreshStats();
   }
 }
 
 async function resumeRun() {
   if ($("#timeline").childElementCount) return;  // already showing a run
-  const state = await (await fetch("/api/agent/events?since=0")).json();
-  if (!state.run_id) return;
+  let reply;
+  try { reply = (await getJson("/api/agent/events?since=0")).body; } catch (error) { return; }
+  if (!reply.run_id) return;
   run.cards = {};
-  for (const event of state.events) renderEvent(event);
-  run.since = state.next;
-  if (state.status === "running") { $("#runLive").disabled = $("#runReplay").disabled = true; $("#cancelRun").disabled = false; clearInterval(run.timer); run.timer = setInterval(pollRun, 700); }
-  else $("#storyStatus").textContent = "Last run: " + state.status;
+  for (const event of reply.events) renderEvent(event);
+  run.since = reply.next;
+  if (reply.status === "running") { $("#runLive").disabled = $("#runReplay").disabled = true; $("#cancelRun").disabled = false; clearInterval(run.timer); run.timer = setInterval(pollRun, 700); }
+  else storyNote("Last run: " + reply.status);
 }
 
 function shorten(text, n) { return text.length > n ? text.slice(0, n) + "…" : text; }
@@ -475,12 +777,21 @@ function renderEvent(event) {
     if (!entry) return;
     entry.card.classList.add(event.ok ? "ok" : "bad");
     entry.result.replaceChildren(el("details", {}, el("summary", {}, (event.ok ? "result: " : "error: ") + shorten(event.text.replace(/\s+/g, " "), 110)), el("pre", {}, pretty(event.text))));
+  } else if (event.type === "map") {
+    drawEffects(event.effects, event.step);
+    const entry = run.cards[event.step];
+    if (entry) {
+      entry.card.classList.add("has-map");
+      entry.card.prepend(el("span", { class: "where" }, "on the map"));
+      entry.card.addEventListener("click", (click) => { if (!click.target.closest("details")) focusStep(event.step); });
+    }
+    refreshStats();
   } else if (event.type === "approval") {
     const approve = el("button", { class: "primary" }, "Approve");
     const reject = el("button", {}, "Reject");
     const decide = async (yes) => {
       approve.disabled = reject.disabled = true;
-      await fetch("/api/agent/decision", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ approve: yes }) });
+      await postJson("/api/agent/decision", { approve: yes });
     };
     approve.onclick = () => decide(true); reject.onclick = () => decide(false);
     line.append(el("div", { class: "box warn" }, el("b", {}, "Human approval needed"), el("div", { class: "small" }, event.summary), el("div", { class: "decide" }, approve, reject)));
@@ -493,18 +804,17 @@ function renderEvent(event) {
 
 $("#runLive").onclick = () => startRun("live");
 $("#runReplay").onclick = () => startRun("replay");
-$("#cancelRun").onclick = () => fetch("/api/agent/cancel", { method: "POST" });
+$("#cancelRun").onclick = () => postJson("/api/agent/cancel");
 
 async function explainTrail(hash) {
   const out = $("#storyOut");
-  out.replaceChildren(el("div", { class: "muted small", style: "margin-top: 6px" }, "Asking the model, using the places near each tower..."));
+  out.replaceChildren(el("div", { class: "muted small", style: "margin-top: 6px" }, "Asking the model, using the places near each tower and the counted routine..."));
   try {
-    const response = await fetch("/api/trail/story", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ msisdn_hash: hash }) });
-    const reply = await response.json();
-    if (!response.ok) throw new Error(reply.error);
-    const sites = reply.facts.towers.map((t) => t.tower + ": " + (t.nearby_sites.length ? t.nearby_sites.map((s) => s.name + " (" + s.kind.toLowerCase() + ", " + s.distance_km + " km)").join("; ") : "no known site nearby")).join("\n");
-    out.replaceChildren(el("h2", {}, "Story (model: " + reply.model + ")"), el("div", { class: "box story" }, reply.story),
-      el("details", { class: "small" }, el("summary", { class: "muted" }, "Facts the story is built from"), el("pre", {}, sites + "\n\nLocations are cell level; the places are synthetic.")));
+    const { response, body } = await postJson("/api/trail/story", { msisdn_hash: hash });
+    if (!response.ok) throw new Error(body.error);
+    const sites = body.facts.towers.map((t) => t.tower + ": " + (t.nearby_sites.length ? t.nearby_sites.map((s) => s.name + " (" + s.kind.toLowerCase() + ", " + s.distance_km + " km)").join("; ") : "no known site nearby")).join("\n");
+    out.replaceChildren(el("h2", {}, "Story (model: " + body.model + ")"), el("div", { class: "box story" }, body.story),
+      el("details", { class: "small" }, el("summary", { class: "muted" }, "Facts the story is built from"), el("pre", {}, body.routines.map((r) => r.sentence).join("\n") + "\n\n" + sites + "\n\nLocations are cell level; the places are synthetic.")));
   } catch (error) {
     out.replaceChildren(el("div", { class: "box err small", style: "margin-top: 6px" }, error.message));
   }
@@ -516,7 +826,8 @@ async function explainTrail(hash) {
   try {
     await loadClock();
     await loadTowers();
-    // Shareable scenes: #kk, #tawau, #tawau-trail (a commuter's trail) and #console
+    refreshStats();
+    // Shareable scenes: #kk, #tawau, #tawau-trail (a commuter's trail), #story and #console
     const scene = location.hash.slice(1);
     if (scene.startsWith("tawau")) await preset(150, 4.214, 117.857, 10, 11);
     else if (scene === "kk") await preset(12, 5.531, 102.197, 15, 10);
@@ -528,6 +839,7 @@ async function explainTrail(hash) {
     }
     if (scene === "console") tab("console");
     if (scene === "story") tab("story");
+    if (scene === "replay") { tab("story"); await startRun("replay"); }
   } catch (error) {
     message("Could not reach the servers: " + error.message, "err");
   }

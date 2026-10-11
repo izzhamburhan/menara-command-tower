@@ -1,32 +1,42 @@
 """Trail narration: the backend gathers the facts, a model only writes them up.
 
 A trail is cell level (a tower position, accurate to about a kilometre or more), so the model is never asked to know
-the world. It is given each stop, the hour of day, and the known sites (from sites-mcp) near each tower, and told to use
-only those. In the demo data the sites are synthetic (hospital, clinic, police, school, enterprise). All data is synthetic.
+the world. It is given the last day's stops, the routines the backend counted over four weeks, and the known sites
+(from sites-mcp) near each tower, and told to use only those. In the demo data the sites are synthetic (hospital,
+clinic, police, school, enterprise, mall). All data is synthetic.
 """
 
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
 from typing import Any
 
 from menara_agent.loop import ChatClient
 from menara_core.geo import bbox_around, haversine_km
 
 from menara_demo.app_types import Hub
+from menara_demo.routines import routines_for, tower_stats
 
 NEARBY_KM = 2.5
 MAX_NEARBY = 5
+RECENT_MIN = 1440
+DEFAULT_WINDOW_MIN = 40320
+MAX_WINDOW_MIN = 40320
 
 RULES = (
-    "You write a short, plain-language story of one subscriber's day from FACTS. Rules: "
+    "You write a short, plain-language story of one subscriber from FACTS. Rules: "
     "1) Use only the places listed under nearby_sites; never invent or recall other place names. "
     "2) Locations are cell level and only accurate to about a kilometre or more, so say 'near' a place, never 'at' it, "
     "and call a visit likely, not certain. "
     "3) A long stay overnight or in the evening on one tower is probably home; a long daytime stay is probably work or study. "
     "4) If a tower has no known site nearby, say there is no known site near it instead of guessing. "
     "5) Mention times as written in the facts. Keep it to a short paragraph or a few bullets. "
-    "6) All of this is synthetic demo data; add one closing line saying so."
+    "6) For habits and routines use only the lines under routines and the counts in towers; never state a frequency "
+    "that is not in the facts, and do not call something a habit if it is not under routines. "
+    "7) recent_segments are the last day's stops in order: tell them as a short sequence. "
+    "8) The person is a synthetic subscriber: say so once, and that routines are inferred from cell-level data. "
+    "9) All of this is synthetic demo data; add one closing line saying so."
 )
 
 
@@ -57,7 +67,7 @@ def _parse(raw: str) -> dict[str, Any]:
     return data
 
 
-async def build_facts(hub: Hub, msisdn_hash: str, window_min: int) -> dict[str, Any]:
+async def build_facts(hub: Hub, msisdn_hash: str, window_min: int = DEFAULT_WINDOW_MIN) -> dict[str, Any]:
     try:
         trail = _parse(await hub.call("user_get_trail", {"msisdn_hash": msisdn_hash, "window_min": window_min}))
     except StoryError:
@@ -83,6 +93,7 @@ async def build_facts(hub: Hub, msisdn_hash: str, window_min: int) -> dict[str, 
             }
         )
 
+    stats = tower_stats(trail)
     towers: list[dict[str, Any]] = []
     for tower, (lat, lng) in positions.items():
         box = bbox_around(lat, lng, NEARBY_KM)
@@ -94,26 +105,47 @@ async def build_facts(hub: Hub, msisdn_hash: str, window_min: int) -> dict[str, 
         )["sites"]
         nearby = sorted(
             (
-                {"name": s["name"], "kind": s["kind"], "distance_km": round(haversine_km(lat, lng, s["lat"], s["lng"]), 2)}
+                {
+                    "name": s["name"],
+                    "kind": s["kind"],
+                    "distance_km": round(haversine_km(lat, lng, s["lat"], s["lng"]), 2),
+                    "lat": s["lat"],
+                    "lng": s["lng"],
+                }
                 for s in found
             ),
             key=lambda s: s["distance_km"],
         )
-        towers.append({"tower": tower, "nearby_sites": [s for s in nearby if s["distance_km"] <= NEARBY_KM][:MAX_NEARBY]})
+        towers.append(
+            {
+                "tower": tower,
+                "lat": lat,
+                "lng": lng,
+                "nearby_sites": [s for s in nearby if s["distance_km"] <= NEARBY_KM][:MAX_NEARBY],
+                **stats.get(tower, {}),
+            }
+        )
 
+    window_end = datetime.fromisoformat(trail["window_start"]) + timedelta(minutes=int(trail["window_min"]))
+    recent_from = window_end - timedelta(minutes=RECENT_MIN)
+    recent = [s for s in segments if s["left_at"] is None or datetime.fromisoformat(s["left_at"]) > recent_from]
     return {
         "window_start": trail["window_start"],
+        "window_min": trail["window_min"],
         "segments": segments,
+        "recent_segments": recent,
         "towers": towers,
+        "routines": routines_for(trail, {t["tower"]: t["nearby_sites"] for t in towers}),
         "precision": "cell level (tower position)",
         "note": "no known site" if not any(t["nearby_sites"] for t in towers) else "",
     }
 
 
 async def tell(llm: ChatClient, facts: dict[str, Any]) -> str:
+    shown = {k: v for k, v in facts.items() if k != "segments"}  # four weeks of segments would only invite guessing
     user = (
         "FACTS (JSON). A tower with an empty nearby_sites list has no known site nearby.\n"
-        + json.dumps(facts, indent=1)
+        + json.dumps(shown, indent=1)
         + "\nWrite the story now."
     )
     reply = await llm.complete([{"role": "system", "content": RULES}, {"role": "user", "content": user}], [])

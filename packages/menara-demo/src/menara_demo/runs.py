@@ -20,6 +20,7 @@ from menara_core import clock
 from menara_core.db import connect
 
 from menara_demo.app_types import Hub
+from menara_demo.map_effects import Effect, effects_for
 
 
 class _Cancellable:
@@ -35,6 +36,28 @@ class _Cancellable:
         return await self._inner.call(name, arguments)
 
 
+class _Mapper:
+    """Works out map effects from each tool's full result (the result event only carries shortened text)."""
+
+    def __init__(self, inner: ToolRunner, db_file: Path, effects: dict[int, list[Effect]]) -> None:
+        self._inner = inner
+        self._db_file = db_file
+        self._effects = effects
+        self._step = 0
+
+    async def call(self, name: str, arguments: dict[str, Any]) -> str:
+        self._step += 1
+        step = self._step
+        text = await self._inner.call(name, arguments)
+        try:
+            found = effects_for(self._db_file, name, arguments, text)
+        except Exception:
+            found = []
+        if found:
+            self._effects[step] = found
+        return text
+
+
 class RunManager:
     def __init__(self, hub: Hub, db_file: Path, llm: ChatClient | None, approver_key: str) -> None:
         self._hub = hub
@@ -48,6 +71,7 @@ class RunManager:
         self._pending_summary: str | None = None
         self._cancelled = False
         self._task: asyncio.Task[None] | None = None
+        self._effects: dict[int, list[Effect]] = {}
 
     @property
     def running(self) -> bool:
@@ -77,6 +101,7 @@ class RunManager:
         self._cancelled = False
         self._pending = None
         self._pending_summary = None
+        self._effects = {}
         self._task = asyncio.create_task(self._run(model, task, max_steps))
         return self.run_id
 
@@ -110,14 +135,25 @@ class RunManager:
             self._pending = None
             self._pending_summary = None
 
+    def _on_event(self, event: dict[str, Any]) -> None:
+        self.events.append(event)
+        if event.get("type") == "result" and event.get("ok"):
+            found = self._effects.pop(int(event["step"]), None)
+            if found:
+                self.events.append({"type": "map", "step": event["step"], "effects": found})
+
     async def _run(self, model: ChatClient, task: str, max_steps: int) -> None:
-        runner = _Cancellable(
-            ClockRunner(GatedRunner(self._hub, self._approver_key, self._ask_human), self._db_file),
-            lambda: self._cancelled,
+        runner = _Mapper(
+            _Cancellable(
+                ClockRunner(GatedRunner(self._hub, self._approver_key, self._ask_human), self._db_file),
+                lambda: self._cancelled,
+            ),
+            self._db_file,
+            self._effects,
         )
         tools = [to_openai_tool(t) for t in visible(self._hub.tools)] + [DEMO_CLOCK_TOOL]
         try:
-            text = await run_agent(model, runner, task, tools, max_steps, log=lambda _: None, on_event=self.events.append)
+            text = await run_agent(model, runner, task, tools, max_steps, log=lambda _: None, on_event=self._on_event)
             status = "cancelled" if self._cancelled else "done"
         except asyncio.CancelledError:
             text, status = "Run cancelled.", "cancelled"

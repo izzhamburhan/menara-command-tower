@@ -14,6 +14,7 @@ from sites_mcp.models import Site, SiteList, TowerSites
 SOURCE = "sites-mcp"
 OWNED_TABLES: frozenset[str] = frozenset()
 KINDS = {"HOSPITAL", "CLINIC", "POLICE", "FIRE", "SCHOOL", "ENTERPRISE"}
+KINDS = {"HOSPITAL", "CLINIC", "POLICE", "FIRE", "SCHOOL", "ENTERPRISE", "MALL"}
 MAX_LIMIT = 1000
 
 
