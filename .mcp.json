@@ -153,6 +153,17 @@
         "-m",
         "energy_mcp"
       ]
+    },
+    "care": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "care-mcp",
+        "python",
+        "-m",
+        "care_mcp"
+      ]
     }
   }
 }

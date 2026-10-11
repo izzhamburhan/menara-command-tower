@@ -428,4 +428,34 @@ CREATE TABLE energy_action (
     approved_by   TEXT NOT NULL,
     reason        TEXT NOT NULL
 );
+
+-- base (seed only): customer-care notices, served by care-mcp. Invented wording; no real number or brand.
+CREATE TABLE care_template (
+    kind     TEXT NOT NULL CHECK (kind IN ('OUTAGE', 'RESTORED', 'DEGRADED')),
+    language TEXT NOT NULL CHECK (language IN ('ms', 'en', 'zh', 'ta')),
+    body     TEXT NOT NULL,
+    PRIMARY KEY (kind, language)
+);
+
+CREATE TABLE care_language_mix (
+    state    TEXT NOT NULL,
+    language TEXT NOT NULL CHECK (language IN ('ms', 'en', 'zh', 'ta')),
+    share    REAL NOT NULL,
+    PRIMARY KEY (state, language)
+);
+
+-- owned by care-mcp: notices that were approved and sent. Counts only: there is no recipient list.
+CREATE TABLE care_notice (
+    seq                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    notice_id             TEXT UNIQUE,
+    kind                  TEXT NOT NULL,
+    towers                TEXT NOT NULL,
+    language              TEXT NOT NULL,
+    recipients_est        INTEGER NOT NULL,
+    message               TEXT NOT NULL,
+    sent_min              INTEGER NOT NULL,
+    sent_at               TEXT NOT NULL,
+    approved_by           TEXT NOT NULL,
+    tickets_deflected_est INTEGER NOT NULL
+);
 """

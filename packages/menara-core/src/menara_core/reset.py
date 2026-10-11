@@ -28,6 +28,7 @@ RUNTIME_TABLES: tuple[str, ...] = (
     "ticket_note",
     "ticket_resolution",
     "energy_action",
+    "care_notice",
 )
 
 
