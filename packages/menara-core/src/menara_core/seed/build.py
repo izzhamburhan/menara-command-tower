@@ -18,6 +18,7 @@ from menara_core.seed.exposure import build_exposure
 from menara_core.seed.field import build_field
 from menara_core.seed.movement import build_movement
 from menara_core.seed.people import build_people
+from menara_core.seed.scam import build_scam
 from menara_core.seed.schema import SCHEMA
 from menara_core.seed.sensors import build_sensors
 from menara_core.seed.sites import build_malls, build_sites
@@ -152,6 +153,7 @@ def build(
         build_sites(conn, rng, scenario, everything)
         build_malls(conn, seed, scenario, everything)  # own random stream
         build_usage(conn, seed, everything)  # own random stream
+        build_scam(conn, seed, everything)  # own random stream
         build_sensors(conn, seed, everything)  # own random stream
         build_field(conn, seed, scenario)  # own random stream
         build_exposure(conn)  # own random stream
@@ -169,7 +171,7 @@ def build(
                 "subscriber", "subscriber_state", "subscriber_experience", "subscriber_cell_visit", "ticket",
                 "weather_station", "weather_obs", "grid_feeder", "grid_feeder_tower", "grid_feeder_state",
                 "flood_gauge", "flood_reading", "flood_extent", "critical_site", "tower_subscribers",
-                "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share", "iot_reading", "iot_sensor", "field_job", "spare_part", "technician", "qod_booking", "qod_profile", "crowd_event", "sla_credit", "enterprise_account", "care_notice", "care_language_mix", "care_template",
+                "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share", "scam_signal", "scam_pattern", "iot_reading", "iot_sensor", "field_job", "spare_part", "technician", "qod_booking", "qod_profile", "crowd_event", "sla_credit", "enterprise_account", "care_notice", "care_language_mix", "care_template",
                 "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share", "energy_action", "tower_energy",
             )
         }

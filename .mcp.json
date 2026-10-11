@@ -219,6 +219,17 @@
         "-m",
         "sensors_mcp"
       ]
+    },
+    "scam": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "scam-mcp",
+        "python",
+        "-m",
+        "scam_mcp"
+      ]
     }
   }
 }

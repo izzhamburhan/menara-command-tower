@@ -581,4 +581,24 @@ CREATE TABLE iot_reading (
     value     REAL NOT NULL,
     PRIMARY KEY (sensor_id, t_min)
 );
+
+-- base (seed only): generic scam patterns and hourly counts per town, served by scam-mcp. Invented numbers.
+-- Counts only: no phone number, sender, recipient or message of a real person is stored.
+CREATE TABLE scam_pattern (
+    pattern_id TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    kind       TEXT NOT NULL CHECK (kind IN ('VOICE', 'SMS', 'MESSAGING')),
+    severity   TEXT NOT NULL CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH')),
+    example    TEXT NOT NULL,
+    advice     TEXT NOT NULL
+);
+
+CREATE TABLE scam_signal (
+    pattern_id TEXT NOT NULL REFERENCES scam_pattern (pattern_id),
+    town       TEXT NOT NULL,
+    t_min      INTEGER NOT NULL,
+    reports    INTEGER NOT NULL,
+    blocked    INTEGER NOT NULL,
+    PRIMARY KEY (pattern_id, town, t_min)
+);
 """
