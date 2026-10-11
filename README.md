@@ -45,6 +45,7 @@ uv run python -m menara_agent "Ticket TK-88213 just arrived. Find the cause and 
 `menara_agent` is a small **test driver**, not the team's real agent. It lets a model call all twelve servers so you can watch the flow. When policy says a human must decide, it stops and asks you in the terminal (`Approve? [y/N]`). See [`packages/menara-agent/README.md`](packages/menara-agent/README.md).
 
 **See it in a browser.** `uv run python -m menara_demo` starts the servers and a simple demo page at http://127.0.0.1:8200: a map of Malaysia where you click to circle a place, see its towers and subscribers, and open a subscriber's trail, a Story tab that runs the incident live with DeepSeek (or a keyless replay) with Approve/Reject buttons, an Explain-this-trail button, and a console to run any tool and read the raw output. It is a demo aid, not the real UI. See [`packages/menara-demo/README.md`](packages/menara-demo/README.md).
+**See it in a browser.** `uv run python -m menara_demo` starts the servers and a simple demo page at http://127.0.0.1:8200: a map of Malaysia where you click to circle a place, see its towers and subscribers, and open a subscriber's trail, a dark command-center look, a Story tab that runs the incident live with DeepSeek (or a keyless replay) while the map follows it, with Approve/Reject buttons, a replayable subscriber trail with a weekday and weekend routine, an Explain-this-trail button, and a console to run any tool and read the raw output. It is a demo aid, not the real UI. See [`packages/menara-demo/README.md`](packages/menara-demo/README.md).
 
 **Or use the servers from your own MCP client** (Claude Code, Codex, an inspector): [`.mcp.json`](.mcp.json) already registers all twelve over stdio. For a browser-style tool such as `npx @modelcontextprotocol/inspector`, run a server over HTTP with `scripts/run_mcp.py` and connect to `http://127.0.0.1:<port>/mcp`.
 
@@ -66,6 +67,7 @@ Port is for streamable HTTP; stdio (the default) needs none. 56 tools in total. 
 | `drone` | 8110 | A simulated drone that inspects a tower | `drone_list_drones`, `drone_dispatch`, `drone_get_mission`, `drone_list_missions` | missions |
 | `ran` | 8111 | A sandboxed RAN control: tilt cells, reset, roll back | `ran_get_config`, `ran_tilt_cells`, `ran_reset_cell`, `ran_revert_change`, `ran_get_change`, `ran_list_changes` | changes and their KPI effects |
 | `sites` | 8112 | Critical sites (hospitals, clinics, police, schools, enterprise) and their tower | `sites_get_site`, `sites_list_in_bbox`, `sites_for_tower` | nothing |
+| `sites` | 8112 | Critical sites (hospitals, clinics, police, schools, enterprise) and malls, and their tower | `sites_get_site`, `sites_list_in_bbox`, `sites_for_tower` | nothing |
 
 \* Human-only: needs `MENARA_APPROVER_KEY`, which the command-center UI holds and the agent must never have.
 
@@ -110,6 +112,7 @@ uv run python -m menara_core.scenario_cli reset       # back to T0
 ## Maps, areas and trails
 
 For a map UI: `tower_list_in_radius` returns the towers inside a circle (nearest first, with distance and status); `user_list_in_area` and `user_list_on_tower` return the subscribers on them with sampled and estimated counts, attach state, experience label and recent cell changes; `user_get_trail` returns one subscriber's sequence of cells with arrival and leave times. About half of the subscribers commute in the seed, so trails have movement, except around the flood towers where people stay put on purpose.
+For a map UI: `tower_list_in_radius` returns the towers inside a circle (nearest first, with distance and status); `user_list_in_area` and `user_list_on_tower` return the subscribers on them with sampled and estimated counts, attach state, experience label and recent cell changes; `user_get_trail` returns one subscriber's sequence of cells with arrival and leave times. About half of the subscribers commute in the seed, so trails have movement, except around the flood towers where people stay put on purpose. The seed holds **four weeks** of movement (`user_get_trail` takes `window_min` up to 40320): weekday commutes, and at the weekend a trip to a synthetic mall for about 40% of commuters, so a routine such as "near Mall 1 on 4 of 4 weekends" can be counted. **Pulled this change? Stop the servers and re-seed** (`uv run python -m menara_core.seed.cli`): the database grows to about 95 MB.
 
 ## From synthetic to real data
 
@@ -121,6 +124,7 @@ Only **`tower-mcp`** is ready for it so far: it reads through a `TowerSource` in
 packages/menara-core/    shared library, not an MCP: envelope, IDs, privacy, clock, audit, tokens, seed
 packages/menara-agent/   the DeepSeek test driver (python -m menara_agent)
 packages/menara-demo/    a simple local demo page: map, circle search, trails, tool console (python -m menara_demo)
+packages/menara-demo/    a simple local demo page: map, circle search, trails and routines, tool console, Story tab (python -m menara_demo)
 servers/<name>-mcp/      one runnable MCP per folder: pyproject, README contract, src/, tests/
 data/scenario/           scripted scenarios (kuala_krai.yaml); data/menara.db is generated, gitignored
 tests/golden_trace/      the whole flood story, walked across separate server processes

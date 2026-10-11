@@ -140,3 +140,11 @@ None. External hosts the page may use: `unpkg.com` (Leaflet, as today) and the m
 ## 9. Rollout
 
 After merging, teammates must stop all MCP servers, run `uv run menara-seed`, and restart the servers and the demo. The database grows (measured value goes in the PR). Agents that call `user_get_trail` with the default window see no change; agents that need more history can ask for up to 40320 minutes. Sites lists now contain `MALL` entries, which agents that filter by kind will see only when they ask for it.
+## 10. As built (changes found while implementing; the intent is unchanged)
+
+- **Map tiles.** The free CARTO dark tiles now answer "API key required", so the page uses the OpenStreetMap tiles (`tile.openstreetmap.org`, the fallback named in section 7) with a CSS filter that turns them dark. Allowed hosts: `unpkg.com`, `tile.openstreetmap.org`.
+- **Mall ids.** `critical_site_id` allows two digits after the area code, so a mall is `CS-<area>-90` (not `-M01`). Criterion 2 became: every `critical_site` row that is not a `MALL` is unchanged.
+- **Stops.** A stay under 45 minutes is transit (a commute spends 30 minutes on the tower on the way), not 30. Weekday and weekend typical times are counted separately.
+- **Effects.** Tower and site positions come from the database; flood and ticket positions come from the server's own result (never from the model). Only `tower_get_status` and `tower_get_kpi` give a tower a status tone; other tools mark a tower `info`. The stats strip shows `Tickets (cluster)` from `ticket_cluster_by_location` on TK-88213 (0 before T0), since there is no ticket-listing tool. Effects are built from the full result text, not the shortened text shown in the timeline.
+- **Seed history.** For a commuter, the original home row at minute -1440 is replaced by the evening return home of the day before (the same tower and cell, earlier), so no tower repeats back to back and nobody sits at work overnight. Rows after minute -1440 are identical to before. The full-size seed takes about 6 seconds and the database is about 95 MB (under the 100 MB limit, so the history stays at 28 days).
+- **Page.** `#replay` is a new scene link that starts a Replay. The page names a clear fix ("Restart the demo") when the server answers with a non-JSON page, which is what an old copy of the server does for a route it does not have.
