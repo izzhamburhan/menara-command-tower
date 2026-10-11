@@ -30,12 +30,14 @@ The token is bound to one action and one set of towers: `target` is the sorted, 
 | `kill_switch_off` | deny | Blocks everything, rollbacks included |
 | `hourly_action_cap` | deny | Authorisations in the last 60 scenario minutes (default cap 10) |
 | `human_decision_required` | ask | `drone_dispatch`, `workforce_create_order`, `comms_send_notice`, `hardware_replace` |
+| `human_decision_required` | ask | `drone_dispatch`, `workforce_create_order`, `comms_send_notice`, `hardware_replace`, `exposure_book_qod`, `enterprise_issue_credit` |
 | `emergency_coverage` | ask | A target serves a clinic, hospital, police or fire site |
 | `subscriber_impact` | ask | Affected subscribers must be below the limit (default 500) |
 | `confidence` | ask | Must be at least the minimum (default 0.9) |
 | `off_peak` | ask | Peak hours default to 18:00 to 23:00 scenario local time |
 
 `ran_revert_tilt` is a rollback: it skips the `ask` rules (a rollback should never wait for a human) but not the `deny` rules. Actions: `ran_reset_cell`, `ran_tilt_cells`, `ran_revert_tilt`, `drone_dispatch`, `workforce_create_order`, `comms_send_notice`, `hardware_replace`.
+`ran_revert_tilt` is a rollback: it skips the `ask` rules (a rollback should never wait for a human) but not the `deny` rules. Actions: `ran_reset_cell`, `ran_tilt_cells`, `ran_revert_tilt`, `drone_dispatch`, `workforce_create_order`, `comms_send_notice`, `hardware_replace`, and for the track servers `energy_sleep_cells` (normal rules, so auto-allowed under the limits), `exposure_book_qod` (always asks: it sells a service) and `enterprise_issue_credit` (always asks: it moves money).
 
 ## Tool contract
 

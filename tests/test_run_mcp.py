@@ -21,8 +21,8 @@ def test_discover_finds_every_server_and_its_port() -> None:
     assert len(servers) == 21
     assert servers["tower"].port == 8101 and servers["tower"].module == "tower_mcp"
     assert servers["tower"].package == "tower-mcp"
-    assert servers["sites"].port == 8112 and servers["usage"].port == 8113 and servers["care"].port == 8115 and servers["enterprise"].port == 8116 and servers["events"].port == 8119 and servers["exposure"].port == 8117 and servers["field"].port == 8118 and servers["sensors"].port == 8120 and servers["scam"].port == 8121
-    assert servers["sites"].port == 8112 and servers["usage"].port == 8113 and servers["energy"].port == 8114 and servers["care"].port == 8115 and servers["enterprise"].port == 8116 and servers["events"].port == 8119 and servers["exposure"].port == 8117 and servers["field"].port == 8118 and servers["sensors"].port == 8120 and servers["scam"].port == 8121
+    expected = {"sites": 8112, "usage": 8113, "energy": 8114, "care": 8115, "enterprise": 8116, "exposure": 8117, "field": 8118, "events": 8119, "sensors": 8120, "scam": 8121}
+    assert {name: servers[name].port for name in expected} == expected
     assert len({s.port for s in servers.values()}) == 21  # no two servers share a port
 
 

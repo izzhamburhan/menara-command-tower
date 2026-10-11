@@ -177,3 +177,15 @@ Ports 8114 to 8121 (the next free ones after 8113), created with `uv run python 
 ## 9. Rollout
 
 Delivery is in slices (energy and care first, then enterprise, field and exposure, then events, sensors and scam, then the Tracks tab and the six-track Replay), each leaving the suite green. After merging, teammates stop the servers, re-seed, restart the demo, and see 21 servers and 80 tools. `Reset demo` clears the new runtime tables too.
+## 10. As built (differences from the plan above)
+
+- **Order.** `events-mcp` was built before `exposure-mcp`, because exposure reads `crowd_event` and the shared crowd model (`menara_core/crowd.py`: attendance times 0.004 PRB points spread over the five nearest towers by inverse distance; risk LOW, MEDIUM from 70, HIGH from 85).
+- **care.** `care_language_mix` is per state, not per town. `care_notice` has a `kind` column and `care_send_notice` takes an optional `kind` (default `OUTAGE`).
+- **field.** `field_dispatch` has two extra optional arguments, `skill` (default `POWER`) and `access` (default `AUTO`; `ROAD` into floodwater is refused).
+- **exposure.** `exposure_quote` and `exposure_book` take an optional `start_in_min` (0 to 4320); `exposure_list_profiles` is the third read tool.
+- **enterprise.** Outage minutes start from the first non-UP state (`KKRI-0142` is DEGRADED from -240 and DOWN from -5); a DEGRADED hour counts a quarter of a DOWN hour for the penalty. Credits for the demo are read by the Tracks tab from `sla_credit` because the at-risk list only shows towers that are affected at the clock.
+- **energy.** The sleep window is 00:00 to 06:00 local time, which is before T0 (minute -420 to -60), so the six-track Replay starts at minute -300 (02:00 the night before), applies the sleep there, then advances to the incident. Savings use the night draw, not the base draw.
+- **Tracks state.** `tracks_state` takes the database file as well as the hub: the energy and quality-on-demand totals have no read tool, so they are summed from `energy_action` (what has happened by the clock) and `qod_booking` (all bookings) through a read-only connection, as `map_effects` already reads the database.
+- **Six-track script.** It is not "the whole incident, then the tracks": the care, enterprise, field, sensors and scam steps run in the middle of the incident (right after the drone's report, while `KKRI-0142` is still down) because their answers are empty once power is back. The incident script runs unchanged around them; events and exposure come at the end. Eight actions wait for a human (energy sleep asks because more than 500 customers are on the chosen towers, then the drone, two tilts, the notice, the credit, the crew and the booking).
+- **Run options.** `script: "tracks"` defaults the start minute to -300 and `max_steps` to 80; an unknown `script` is a 400.
+- **Counts.** 21 servers, 84 tools (80 in the Console; four are human-only), five new runtime tables in the reset list.
