@@ -141,11 +141,11 @@ def test_a_live_run_streams_calls_results_and_one_final(make: Callable[[list[Rep
     assert started.status_code == 200 and started.json()["run_id"]
     state = wait_for(client, finished)
     types = [e["type"] for e in state["events"]]
-    assert types == ["say", "call", "result", "map", "heal", "final"] and state["status"] == "done"
+    assert types == ["say", "call", "result", "map", "heal", "track", "final"] and state["status"] == "done"
     assert state["events"][-1]["text"] == "KKRI-0142 is down."
     assert client.get("/api/clock").json()["t_min"] == 20  # the run started the scenario clock where asked
     later = client.get("/api/agent/events", params={"since": 2}).json()
-    assert [e["type"] for e in later["events"]] == ["result", "map", "heal", "final"] and later["next"] == 6
+    assert [e["type"] for e in later["events"]] == ["result", "map", "heal", "track", "final"] and later["next"] == 7
 
 
 def test_the_human_approves_with_a_button_and_the_model_gets_the_token(
@@ -303,3 +303,45 @@ def test_the_heal_state_route_answers_even_when_the_servers_have_nothing(make: C
     body = reply.json()
     assert body["ok"] is True and body["failed_tower"] == "KKRI-0142" and body["threshold"] == 85.0
     assert body["watched"] == [] and body["changes"] == [] and body["incident"] is None and "clock_min" in body
+    assert body["watched"] == [] and body["changes"] == [] and body["incident"] is None and "clock_min" in body
+
+def test_a_track_event_follows_the_result_and_heal_events(make: Callable[[list[Reply] | None], TestClient]) -> None:
+    client = make([status_call(), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Investigate", "clock": 20})
+    events = wait_for(client, finished)["events"]
+    kinds = [e["type"] for e in events]
+    assert kinds.index("track") == kinds.index("heal") + 1
+    track = next(e for e in events if e["type"] == "track")
+    assert track["step"] == 1 and track["track"] == 4 and track["name"] == "tower_get_status" and track["label"]
+
+
+def test_a_failing_track_builder_does_not_break_the_run(
+    make: Callable[[list[Reply] | None], TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("bad shape")
+
+    monkeypatch.setattr("menara_demo.tracks.TrackTracker.observe", boom)
+    client = make([status_call(), Reply("done", [])])
+    client.post("/api/agent/run", json={"mode": "live", "task": "Investigate", "clock": 20})
+    state = wait_for(client, finished)
+    assert state["status"] == "done" and not [e for e in state["events"] if e["type"] == "track"]
+
+
+def test_the_tracks_state_route_answers_with_six_waiting_cards(make: Callable[[list[Reply] | None], TestClient]) -> None:
+    reply = make([]).get("/api/tracks/state")
+    body = reply.json()
+    assert reply.status_code == 200 and body["ok"] is True
+    assert [c["track"] for c in body["cards"]] == [1, 2, 3, 4, 5, 6] and body["clock_min"] == 0
+
+
+@pytest.mark.parametrize("script", ["dream", 5, None, ["tracks"]])
+def test_run_script_must_be_incident_or_tracks(make: Callable[[list[Reply] | None], TestClient], script: Any) -> None:
+    reply = make([]).post("/api/agent/run", json={"mode": "replay", "script": script})
+    assert reply.status_code == 400 and "script" in reply.json()["error"]
+
+
+def test_a_live_run_ignores_the_script_choice_but_still_validates_it(make: Callable[[list[Reply] | None], TestClient]) -> None:
+    client = make([Reply("done", [])])
+    assert client.post("/api/agent/run", json={"mode": "live", "task": "x", "script": "bogus"}).status_code == 400
+    assert client.post("/api/agent/run", json={"mode": "live", "task": "x", "script": "tracks"}).status_code == 200
