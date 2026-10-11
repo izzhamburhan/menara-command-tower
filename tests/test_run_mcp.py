@@ -18,11 +18,12 @@ spec.loader.exec_module(run_mcp)
 
 def test_discover_finds_every_server_and_its_port() -> None:
     servers = run_mcp.discover(ROOT)
-    assert len(servers) == 13
+    assert len(servers) == 21
     assert servers["tower"].port == 8101 and servers["tower"].module == "tower_mcp"
     assert servers["tower"].package == "tower-mcp"
-    assert servers["sites"].port == 8112 and servers["usage"].port == 8113
-    assert len({s.port for s in servers.values()}) == 13  # no two servers share a port
+    expected = {"sites": 8112, "usage": 8113, "energy": 8114, "care": 8115, "enterprise": 8116, "exposure": 8117, "field": 8118, "events": 8119, "sensors": 8120, "scam": 8121}
+    assert {name: servers[name].port for name in expected} == expected
+    assert len({s.port for s in servers.values()}) == 21  # no two servers share a port
 
 
 def test_discover_matches_the_servers_registered_in_mcp_json() -> None:
@@ -59,7 +60,7 @@ def test_stdio_flag_drops_the_http_arguments(capsys: pytest.CaptureFixture[str])
 def test_all_prints_one_command_per_server(capsys: pytest.CaptureFixture[str]) -> None:
     assert run_mcp.main(["all", "--print"]) == 0
     out = capsys.readouterr().out
-    assert out.count("--transport streamable-http") == 13
+    assert out.count("--transport streamable-http") == 21
 
 
 def test_an_unknown_name_is_an_error_that_lists_the_choices(capsys: pytest.CaptureFixture[str]) -> None:

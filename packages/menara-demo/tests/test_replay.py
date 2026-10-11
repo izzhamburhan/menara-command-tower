@@ -21,13 +21,14 @@ from starlette.testclient import TestClient
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 NEEDED = {"ticket", "tower", "grid", "flood", "ontology", "twin", "policy", "drone", "ran"}
+TRACK_SERVERS = {"energy", "care", "enterprise", "field", "sensors", "scam", "events", "exposure"}
 
 
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     db_file = build_test_db(tmp_path)
     monkeypatch.setenv("MENARA_DB", str(db_file))
-    specs = {n: s for n, s in load_config(REPO_ROOT / ".mcp.json").items() if n in NEEDED}
+    specs = {n: s for n, s in load_config(REPO_ROOT / ".mcp.json").items() if n in NEEDED | TRACK_SERVERS}
     specs = {n: type(s)(sys.executable, ["-m", s.args[-1]], dict(s.env)) for n, s in specs.items()}
 
     @asynccontextmanager
@@ -39,9 +40,10 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         yield test_client
 
 
-def play(client: TestClient, decisions: list[bool], timeout: float = 120.0) -> dict[str, Any]:
+def play(client: TestClient, decisions: list[bool], timeout: float = 120.0, script: str | None = None) -> dict[str, Any]:
     """Start a replay and answer each approval prompt from `decisions`, in order."""
-    assert client.post("/api/agent/run", json={"mode": "replay", "clock": 12}).status_code == 200
+    body: dict[str, Any] = {"mode": "replay", "clock": 12} if script is None else {"mode": "replay", "script": script}
+    assert client.post("/api/agent/run", json=body).status_code == 200
     answers = iter(decisions)
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -146,3 +148,48 @@ def test_heal_state_after_the_replay_shows_the_failed_then_the_good_tilt(client:
     assert before_fix and min(before_fix) >= state["threshold"]
     assert after_first and min(after_first) >= state["threshold"]  # the first tilt did not help enough
     assert during_second and max(during_second) < state["threshold"]  # the second one did
+
+
+NEW_IDS = ("NTC-0001", "CRD-0001", "JOB-0001", "ENA-0001", "BKG-0001")
+APPROVALS = 8  # energy may auto-allow; the drone, two tilts, the notice, the credit, the crew and the booking are asked
+
+
+def test_the_tracks_replay_reaches_all_six_tracks_with_the_new_approvals(client: TestClient) -> None:
+    state = play(client, [True] * 12, timeout=300.0, script="tracks")
+    assert state["status"] == "done", state["events"][-1]
+    assert "Replay finished" in state["events"][-1]["text"]
+    tracks = {e["track"] for e in state["events"] if e["type"] == "track"}
+    assert tracks == {1, 2, 3, 4, 5, 6}
+    text = json.dumps(state["events"])
+    for expected in NEW_IDS:
+        assert expected in text, expected
+    approvals = [e for e in state["events"] if e["type"] == "approval"]
+    assert APPROVALS - 1 <= len(approvals) <= APPROVALS + 1
+    names = [e["name"] for e in state["events"] if e["type"] == "call"]
+    assert names.count("ran_tilt_cells") == 2 and names.count("ran_revert_change") == 2  # the incident is unchanged
+    assert all(r["ok"] for n in ("energy_apply_sleep", "care_send_notice", "enterprise_issue_credit", "field_dispatch", "exposure_book") for r in results(state, n))
+    assert settings.approver_key() not in text
+    cards = {c["track"]: c for c in client.get("/api/tracks/state").json()["cards"]}
+    assert cards[5]["numbers"]["kwh_saved"] > 0 and cards[6]["numbers"]["credits_rm"] > 0 and cards[6]["numbers"]["qod_booked_rm"] > 0
+    assert cards[3]["numbers"]["tickets_deflected"] > 0 and cards[2]["numbers"]["jobs"] == 1
+
+
+def test_reset_after_the_tracks_replay_clears_the_new_tables_and_a_second_run_gives_the_same_ids(client: TestClient) -> None:
+    first = play(client, [True] * 12, timeout=300.0, script="tracks")
+    assert first["status"] == "done"
+    reset = client.post("/api/reset")
+    deleted = reset.json()["deleted"]
+    assert reset.status_code == 200 and all(deleted[t] >= 1 for t in ("energy_action", "care_notice", "sla_credit", "qod_booking", "field_job"))
+    cards = {c["track"]: c for c in client.get("/api/tracks/state").json()["cards"]}
+    assert cards[5]["numbers"]["kwh_saved"] == 0 and cards[2]["numbers"]["jobs"] == 0 and cards[6]["numbers"]["bookings"] == 0
+    second = play(client, [True] * 12, timeout=300.0, script="tracks")
+    assert second["status"] == "done"
+    text = json.dumps(second["events"])
+    assert all(i in text for i in NEW_IDS)
+
+
+def test_the_tracks_replay_stops_cleanly_when_the_human_rejects_the_first_action(client: TestClient) -> None:
+    state = play(client, [False], timeout=200.0, script="tracks")
+    assert state["status"] == "done" and "reject" in state["events"][-1]["text"].lower()
+    names = [e["name"] for e in state["events"] if e["type"] == "call"]
+    assert "drone_dispatch" not in names and "care_send_notice" not in names

@@ -1,6 +1,6 @@
 # Menara Command Center (MCP side)
 
-A Palantir-style **network command center for Malaysia**, built for the TM AI Elevate hackathon. This repo holds the **MCP side**: thirteen small, independent MCP servers that give an AI agent (and later a map UI) eyes and hands over a mobile network: towers, subscribers, tickets, weather, power, floods, critical sites, a digital twin, a policy engine, a drone, a RAN control sandbox, and what people use on the internet.
+A Palantir-style **network command center for Malaysia**, built for the TM AI Elevate hackathon. This repo holds the **MCP side**: twenty-one small, independent MCP servers that give an AI agent (and later a map UI) eyes and hands over a mobile network: towers, subscribers, tickets, weather, power, floods, critical sites, a digital twin, a policy engine, a drone, a RAN control sandbox, what people use on the internet, and (for the six hackathon tracks) energy, customer care, business customers, quality on demand, field crews, crowd events, smart-city sensors and scams.
 
 **All data is synthetic.** Nothing here is TM's real data, systems, prices or coverage, and no real subscriber is involved. Owner: Izzham Burhan, TMRND.
 
@@ -16,7 +16,7 @@ A Palantir-style **network command center for Malaysia**, built for the TM AI El
 ┌────────────────┐      ┌──────────────────────┐      ┌────────────────────────────────────────┐
 │ draws towers,  │      │ reasons, plans, calls │ MCP  │ tower  ticket  user  ontology  weather │
 │ circles, trails│◄────►│ tools, asks policy    │◄────►│ grid   flood   sites twin  policy       │
-│ approves risky │      │ before acting         │      │ ran    drone                            │
+│ approves risky │      │ before acting         │      │ ran    drone  usage  + 8 more           │
 │ actions        │      └──────────────────────┘      └───────────────────┬────────────────────┘
 └────────────────┘                                                         │ read (and own-table writes)
                                                                   data/menara.db  (synthetic SQLite)
@@ -42,15 +42,15 @@ Prefer `python -m ...` over console scripts such as `uv run menara-seed`: some W
 uv run python -m menara_agent "Ticket TK-88213 just arrived. Find the cause and blast radius, and record an Incident."
 ```
 
-`menara_agent` is a small **test driver**, not the team's real agent. It lets a model call all thirteen servers so you can watch the flow. When policy says a human must decide, it stops and asks you in the terminal (`Approve? [y/N]`). See [`packages/menara-agent/README.md`](packages/menara-agent/README.md).
+`menara_agent` is a small **test driver**, not the team's real agent. It lets a model call all twenty-one servers so you can watch the flow. When policy says a human must decide, it stops and asks you in the terminal (`Approve? [y/N]`). See [`packages/menara-agent/README.md`](packages/menara-agent/README.md).
 
-**See it in a browser.** `uv run python -m menara_demo` starts the servers and a simple demo page at http://127.0.0.1:8200: a map of Malaysia where you click to circle a place, see its towers and subscribers, and open a subscriber's trail, a dark command-center look, a Story tab that runs the incident live with DeepSeek (or a keyless replay) while the map follows it, with Approve/Reject buttons, a replayable subscriber trail with a weekday and weekend routine, an Explain-this-trail button, a Self-heal tab that shows the loop stage by stage with the load falling on a chart, a "What people use here" card for the circle, a Reset button that puts the demo back to a clean state, and a console to run any tool and read the raw output. It is a demo aid, not the real UI. See [`packages/menara-demo/README.md`](packages/menara-demo/README.md).
+**See it in a browser.** `uv run python -m menara_demo` starts the servers and a simple demo page at http://127.0.0.1:8200: a map of Malaysia where you click to circle a place, see its towers and subscribers, and open a subscriber's trail, a dark command-center look, a Story tab that runs the incident live with DeepSeek (or a keyless replay) while the map follows it, with Approve/Reject buttons, a replayable subscriber trail with a weekday and weekend routine, an Explain-this-trail button, a Self-heal tab that shows the loop stage by stage with the load falling on a chart, a "What people use here" card for the circle, a **Tracks** tab with one card per hackathon track and a six-track Replay, a Reset button that puts the demo back to a clean state, and a console to run any tool and read the raw output. It is a demo aid, not the real UI. See [`packages/menara-demo/README.md`](packages/menara-demo/README.md).
 
-**Or use the servers from your own MCP client** (Claude Code, Codex, an inspector): [`.mcp.json`](.mcp.json) already registers all thirteen over stdio. For a browser-style tool such as `npx @modelcontextprotocol/inspector`, run a server over HTTP with `scripts/run_mcp.py` and connect to `http://127.0.0.1:<port>/mcp`.
+**Or use the servers from your own MCP client** (Claude Code, Codex, an inspector): [`.mcp.json`](.mcp.json) already registers all twenty-one over stdio. For a browser-style tool such as `npx @modelcontextprotocol/inspector`, run a server over HTTP with `scripts/run_mcp.py` and connect to `http://127.0.0.1:<port>/mcp`.
 
-## The thirteen MCP servers
+## The twenty-one MCP servers
 
-Port is for streamable HTTP; stdio (the default) needs none. 59 tools in total. Each server's full contract (arguments, response shapes, errors) is in `servers/<name>-mcp/README.md`.
+Port is for streamable HTTP; stdio (the default) needs none. 84 tools in total. Each server's full contract (arguments, response shapes, errors) is in `servers/<name>-mcp/README.md`.
 
 | Server | Port | What it is for | Tools | Writes |
 | --- | --- | --- | --- | --- |
@@ -67,8 +67,31 @@ Port is for streamable HTTP; stdio (the default) needs none. 59 tools in total. 
 | `ran` | 8111 | A sandboxed RAN control: tilt cells, reset, roll back | `ran_get_config`, `ran_tilt_cells`, `ran_reset_cell`, `ran_revert_change`, `ran_get_change`, `ran_list_changes` | changes and their KPI effects |
 | `sites` | 8112 | Critical sites (hospitals, clinics, police, schools, enterprise) and malls, and their tower | `sites_get_site`, `sites_list_in_bbox`, `sites_for_tower` | nothing |
 | `usage` | 8113 | What people use on the internet in a circle or on a tower (top apps, categories, busiest hour); synthetic estimates, aggregated, never per person | `usage_top_apps_in_area`, `usage_get_tower_apps`, `usage_app_trend` | nothing |
+| `energy` | 8114 | How much power a tower uses, how long its battery or generator lasts, and where night-time sleep modes save energy and CO2 | `energy_get_tower`, `energy_find_savings`, `energy_apply_sleep`\* | sleep actions |
+| `care` | 8115 | Who an outage hurts, the tickets it will cause, and a drafted notice in Malay, English, Chinese or Tamil; counts only | `care_get_impact`, `care_draft_notice`, `care_send_notice`\*, `care_list_notices` | notice log |
+| `enterprise` | 8116 | Fictional business customers: revenue at risk and SLA penalty during an outage, and credits | `enterprise_get_revenue_at_risk`, `enterprise_list_accounts`, `enterprise_issue_credit`\* | SLA credits |
+| `exposure` | 8117 | A network-exposure product (quality on demand): can these towers carry a guaranteed profile, the quote, the booking | `exposure_list_profiles`, `exposure_quote`, `exposure_book`\* | bookings |
+| `field` | 8118 | Which field technician to send: on shift, nearest by ETA, road or boat, with parts and a safety note | `field_find_crew`, `field_dispatch`\*, `field_list_jobs` | work orders |
+| `events` | 8119 | Crowd events (festivals, matches, concerts, the balik kampung exodus), the load they add per tower and a capacity plan | `events_list_upcoming`, `events_forecast_load`, `events_capacity_plan` | nothing |
+| `sensors` | 8120 | Smart-city sensors (water level, rain, air quality) and early warnings with the minutes left before a danger level | `sensors_list_in_area`, `sensors_get_readings`, `sensors_get_alerts` | nothing |
+| `scam` | 8121 | Where scam calls and messages are spiking and how many customers a shield would protect; counts only, never a number or a person | `scam_get_hotspots`, `scam_get_pattern`, `scam_estimate_protection` | nothing |
 
-\* Human-only: needs `MENARA_APPROVER_KEY`, which the command-center UI holds and the agent must never have.
+\* On `policy`: human-only, needs `MENARA_APPROVER_KEY`, which the command-center UI holds and the agent must never have.
+
+On the new servers, a `*` marks a real-world action: it needs a signed token from `policy` for that exact action and set of towers. Policy always asks a human for sending a notice, crediting a customer, dispatching a crew and selling a booking; putting idle capacity to sleep is auto-allowed under its normal limits and asks above them.
+
+### Six tracks, one story
+
+The hackathon has six challenge tracks. The servers map onto them, and the demo plays one story across all six:
+
+| Track | Servers | In the story |
+| --- | --- | --- |
+| 1 Industry and Operations | `ticket`, `ontology`, `drone`, `policy` | the Incident, the blast radius, the human-approved drone |
+| 2 Workforce Productivity | `field` | the crew that can reach a flooded site, by boat, with the right parts |
+| 3 Customer Experience | `care`, `scam`, `user` | customers told before they call; a flood-relief scam spotted |
+| 4 Networks and Infrastructure | `tower`, `ran`, `twin`, `grid`, `flood`, `weather`, `events` | the failed and the good tilt; the next match forecast |
+| 5 Sustainability and Smart Nation | `energy`, `sensors` | night energy saved; the river sensor warning |
+| 6 Revenue Streams | `enterprise`, `exposure` | SLA credits; spare capacity sold for the match |
 
 ### A few things every server shares
 
@@ -91,6 +114,8 @@ The scenario lives in [`data/scenario/kuala_krai.yaml`](data/scenario/kuala_krai
 
 The agent's path, which `tests/golden_trace/` replays across separate server processes: read the ticket, cluster the tickets, find the serving cell and tower, check weather, power and flood in parallel to find the **cause**, compute the **blast radius**, record an **Incident**, simulate a fix in the twin, ask policy (a human approves the drone), inspect with the drone, try a tilt that **fails** (scripted on purpose), verify with KPIs, **roll back**, try a better tilt that works, watch power return, and close the tickets. Everything it did is in the audit log.
 
+**The six-track story.** The Tracks tab's **Run six-track Replay** plays the same flood across all six tracks with a fixed script (no model, no key): at 02:00 the night before, idle towers sleep to save energy; then the incident, the drone, the failed and the good tilt; while the tower is down, customers are told before they call, business customers are credited, a technician is sent by boat and the river sensor and the scam hotspot are read; afterwards the next big match is forecast and its spare capacity sold. Eight real-world actions wait for a human Approve (the night sleep, the drone, two tilts, the notice, the credit, the crew and the booking). `POST /api/agent/run` takes `"script": "tracks"` for it.
+
 **The clock.** The servers never move time; whoever drives the demo does:
 
 ```bash
@@ -98,7 +123,7 @@ uv run python -m menara_core.scenario_cli show        # where are we?
 uv run python -m menara_core.scenario_cli set 12      # jump to minute 12
 uv run python -m menara_core.scenario_cli advance 60  # move forward an hour
 uv run python -m menara_core.scenario_cli reset       # back to T0
-uv run python -m menara_core.scenario_cli reset-state --yes   # also remove what agents and people created (incidents, approvals, tilts, missions, notes, audit log)
+uv run python -m menara_core.scenario_cli reset-state --yes   # also remove what agents and people created (incidents, approvals, tilts, missions, notices, credits, bookings, work orders, energy actions, notes, audit log)
 ```
 
 ## Safety, privacy and honesty
@@ -111,7 +136,6 @@ uv run python -m menara_core.scenario_cli reset-state --yes   # also remove what
 
 ## Maps, areas and trails
 
-For a map UI: `tower_list_in_radius` returns the towers inside a circle (nearest first, with distance and status); `user_list_in_area` and `user_list_on_tower` return the subscribers on them with sampled and estimated counts, attach state, experience label and recent cell changes; `user_get_trail` returns one subscriber's sequence of cells with arrival and leave times. About half of the subscribers commute in the seed, so trails have movement, except around the flood towers where people stay put on purpose.
 For a map UI: `tower_list_in_radius` returns the towers inside a circle (nearest first, with distance and status); `user_list_in_area` and `user_list_on_tower` return the subscribers on them with sampled and estimated counts, attach state, experience label and recent cell changes; `user_get_trail` returns one subscriber's sequence of cells with arrival and leave times. About half of the subscribers commute in the seed, so trails have movement, except around the flood towers where people stay put on purpose. The seed holds **four weeks** of movement (`user_get_trail` takes `window_min` up to 40320): weekday commutes, and at the weekend a trip to a synthetic mall for about 40% of commuters, so a routine such as "near Mall 1 on 4 of 4 weekends" can be counted. **Pulled this change? Stop the servers and re-seed** (`uv run python -m menara_core.seed.cli`): the database grows to about 95 MB.
 
 ## From synthetic to real data
@@ -123,14 +147,13 @@ Only **`tower-mcp`** is ready for it so far: it reads through a `TowerSource` in
 ```
 packages/menara-core/    shared library, not an MCP: envelope, IDs, privacy, clock, audit, tokens, seed
 packages/menara-agent/   the DeepSeek test driver (python -m menara_agent)
-packages/menara-demo/    a simple local demo page: map, circle search, trails, tool console (python -m menara_demo)
-packages/menara-demo/    a simple local demo page: map, circle search, trails and routines, tool console, Story tab (python -m menara_demo)
+packages/menara-demo/    a simple local demo page: map, circle search, trails and routines, tool console, Story, Self-heal and Tracks tabs (python -m menara_demo)
 servers/<name>-mcp/      one runnable MCP per folder: pyproject, README contract, src/, tests/
 data/scenario/           scripted scenarios (kuala_krai.yaml); data/menara.db is generated, gitignored
 tests/golden_trace/      the whole flood story, walked across separate server processes
 scripts/                 run_mcp.py, new_mcp.py, worktree and skill tooling
 .claude/ and .codex/     process skills for Claude Code and Codex (kept identical by a CI check)
-.mcp.json                registers the thirteen servers for MCP clients
+.mcp.json                registers the twenty-one servers for MCP clients
 docs/                    specs and test plans for the larger changes
 CLAUDE.md, AGENTS.md     the handbook for AI coding agents and people (same rules, two audiences)
 playbook.md              the working process: gates, git rules, definition of done

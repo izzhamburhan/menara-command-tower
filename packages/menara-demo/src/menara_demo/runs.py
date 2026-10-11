@@ -22,6 +22,7 @@ from menara_core.db import connect
 from menara_demo.app_types import Hub
 from menara_demo.heal import StageTracker
 from menara_demo.map_effects import Effect, effects_for
+from menara_demo.tracks import TrackTracker
 
 
 class _Cancellable:
@@ -40,12 +41,21 @@ class _Cancellable:
 class _Mapper:
     """Works out map effects from each tool's full result (the result event only carries shortened text)."""
 
-    def __init__(self, inner: ToolRunner, db_file: Path, effects: dict[int, list[Effect]], stages: dict[int, dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        inner: ToolRunner,
+        db_file: Path,
+        effects: dict[int, list[Effect]],
+        stages: dict[int, dict[str, Any]],
+        tracks: dict[int, dict[str, Any]],
+    ) -> None:
         self._inner = inner
         self._db_file = db_file
         self._effects = effects
         self._stages = stages
+        self._tracks = tracks
         self._tracker = StageTracker()
+        self._track_tracker = TrackTracker()
         self._step = 0
 
     async def call(self, name: str, arguments: dict[str, Any]) -> str:
@@ -64,6 +74,12 @@ class _Mapper:
             stage = None
         if stage is not None:
             self._stages[step] = stage
+        try:
+            track = self._track_tracker.observe(name, arguments, text)
+        except Exception:
+            track = None
+        if track is not None:
+            self._tracks[step] = track
         return text
 
 
@@ -82,6 +98,7 @@ class RunManager:
         self._task: asyncio.Task[None] | None = None
         self._effects: dict[int, list[Effect]] = {}
         self._stages: dict[int, dict[str, Any]] = {}
+        self._tracks: dict[int, dict[str, Any]] = {}
 
     @property
     def running(self) -> bool:
@@ -91,9 +108,13 @@ class RunManager:
     def pending_approval(self) -> str | None:
         return self._pending_summary if self._pending is not None else None
 
-    def start(self, mode: str, task: str, clock_min: int, max_steps: int) -> str:
+    def start(self, mode: str, task: str, clock_min: int, max_steps: int, script: str = "incident") -> str:
         model: ChatClient
-        if mode == "replay":
+        if mode == "replay" and script == "tracks":
+            from menara_demo.scripted_tracks import TracksReplayModel
+
+            model = TracksReplayModel()
+        elif mode == "replay":
             from menara_demo.scripted import ReplayModel
 
             model = ReplayModel()
@@ -113,6 +134,7 @@ class RunManager:
         self._pending_summary = None
         self._effects = {}
         self._stages = {}
+        self._tracks = {}
         self._task = asyncio.create_task(self._run(model, task, max_steps))
         return self.run_id
 
@@ -127,6 +149,7 @@ class RunManager:
         self._pending_summary = None
         self._effects = {}
         self._stages = {}
+        self._tracks = {}
         self._cancelled = False
         self._task = None
 
@@ -170,6 +193,9 @@ class RunManager:
             stage = self._stages.pop(int(event["step"]), None)
             if stage is not None:
                 self.events.append({"type": "heal", "step": event["step"], **stage})
+            track = self._tracks.pop(int(event["step"]), None)
+            if track is not None:
+                self.events.append({"type": "track", "step": event["step"], **track})
 
     async def _run(self, model: ChatClient, task: str, max_steps: int) -> None:
         runner = _Mapper(
@@ -180,6 +206,7 @@ class RunManager:
             self._db_file,
             self._effects,
             self._stages,
+            self._tracks,
         )
         tools = [to_openai_tool(t) for t in visible(self._hub.tools)] + [DEMO_CLOCK_TOOL]
         try:

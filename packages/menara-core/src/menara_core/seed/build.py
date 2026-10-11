@@ -9,10 +9,18 @@ from pathlib import Path
 from menara_core.scenario import Scenario
 from menara_core.seed import towers as gen
 from menara_core.seed.actions import build_actions
+from menara_core.seed.care import build_care
 from menara_core.seed.context import build_context
+from menara_core.seed.energy import build_energy
+from menara_core.seed.enterprise import build_enterprise
+from menara_core.seed.events import build_events
+from menara_core.seed.exposure import build_exposure
+from menara_core.seed.field import build_field
 from menara_core.seed.movement import build_movement
 from menara_core.seed.people import build_people
+from menara_core.seed.scam import build_scam
 from menara_core.seed.schema import SCHEMA
+from menara_core.seed.sensors import build_sensors
 from menara_core.seed.sites import build_malls, build_sites
 from menara_core.seed.usage import build_usage
 
@@ -145,6 +153,14 @@ def build(
         build_sites(conn, rng, scenario, everything)
         build_malls(conn, seed, scenario, everything)  # own random stream
         build_usage(conn, seed, everything)  # own random stream
+        build_scam(conn, seed, everything)  # own random stream
+        build_sensors(conn, seed, everything)  # own random stream
+        build_field(conn, seed, scenario)  # own random stream
+        build_exposure(conn)  # own random stream
+        build_events(conn, seed, everything)  # own random stream
+        build_enterprise(conn, seed, everything)  # own random stream
+        build_care(conn, seed, everything)  # own random stream
+        build_energy(conn, seed, everything)  # own random stream
         build_actions(conn, rng, scenario, everything)
         build_movement(conn, seed, scenario)  # last, with its own random stream, so older tables are unchanged
         conn.commit()
@@ -155,7 +171,8 @@ def build(
                 "subscriber", "subscriber_state", "subscriber_experience", "subscriber_cell_visit", "ticket",
                 "weather_station", "weather_obs", "grid_feeder", "grid_feeder_tower", "grid_feeder_state",
                 "flood_gauge", "flood_reading", "flood_extent", "critical_site", "tower_subscribers",
-                "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share",
+                "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share", "scam_signal", "scam_pattern", "iot_reading", "iot_sensor", "field_job", "spare_part", "technician", "qod_booking", "qod_profile", "crowd_event", "sla_credit", "enterprise_account", "care_notice", "care_language_mix", "care_template",
+                "policy_setting", "ran_script", "drone", "drone_finding", "app", "app_hour_factor", "tower_app_share", "energy_action", "tower_energy",
             )
         }
     finally:

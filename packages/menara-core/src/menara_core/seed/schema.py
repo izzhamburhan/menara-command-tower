@@ -404,4 +404,201 @@ CREATE TABLE tower_app_share (
     data_share  REAL NOT NULL,
     PRIMARY KEY (enodeb_name, app_id)
 );
+
+-- base (seed only): synthetic tower energy, served by energy-mcp. Invented numbers.
+CREATE TABLE tower_energy (
+    enodeb_name    TEXT PRIMARY KEY REFERENCES tower (enodeb_name),
+    base_kw        REAL NOT NULL,
+    battery_kwh    REAL NOT NULL,
+    has_genset     INTEGER NOT NULL,
+    genset_fuel_l  REAL NOT NULL,
+    genset_l_per_h REAL NOT NULL
+);
+
+-- owned by energy-mcp: sleep modes that were approved and applied
+CREATE TABLE energy_action (
+    seq           INTEGER PRIMARY KEY AUTOINCREMENT,
+    action_id     TEXT UNIQUE,
+    enodeb_name   TEXT NOT NULL REFERENCES tower (enodeb_name),
+    kind          TEXT NOT NULL CHECK (kind IN ('SLEEP')),
+    from_min      INTEGER NOT NULL,
+    to_min        INTEGER NOT NULL,
+    kwh_saved     REAL NOT NULL,
+    co2_kg_saved  REAL NOT NULL,
+    approved_by   TEXT NOT NULL,
+    reason        TEXT NOT NULL
+);
+
+-- base (seed only): customer-care notices, served by care-mcp. Invented wording; no real number or brand.
+CREATE TABLE care_template (
+    kind     TEXT NOT NULL CHECK (kind IN ('OUTAGE', 'RESTORED', 'DEGRADED')),
+    language TEXT NOT NULL CHECK (language IN ('ms', 'en', 'zh', 'ta')),
+    body     TEXT NOT NULL,
+    PRIMARY KEY (kind, language)
+);
+
+CREATE TABLE care_language_mix (
+    state    TEXT NOT NULL,
+    language TEXT NOT NULL CHECK (language IN ('ms', 'en', 'zh', 'ta')),
+    share    REAL NOT NULL,
+    PRIMARY KEY (state, language)
+);
+
+-- owned by care-mcp: notices that were approved and sent. Counts only: there is no recipient list.
+CREATE TABLE care_notice (
+    seq                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    notice_id             TEXT UNIQUE,
+    kind                  TEXT NOT NULL,
+    towers                TEXT NOT NULL,
+    language              TEXT NOT NULL,
+    recipients_est        INTEGER NOT NULL,
+    message               TEXT NOT NULL,
+    sent_min              INTEGER NOT NULL,
+    sent_at               TEXT NOT NULL,
+    approved_by           TEXT NOT NULL,
+    tickets_deflected_est INTEGER NOT NULL
+);
+
+-- base (seed only): fictional business customers with an SLA, served by enterprise-mcp. Invented numbers.
+CREATE TABLE enterprise_account (
+    account_id           TEXT PRIMARY KEY,
+    name                 TEXT NOT NULL UNIQUE,
+    sector               TEXT NOT NULL,
+    enodeb_name          TEXT NOT NULL REFERENCES tower (enodeb_name),
+    plan                 TEXT NOT NULL,
+    monthly_value_rm     REAL NOT NULL,
+    sla_availability_pct REAL NOT NULL,
+    penalty_rm_per_hour  REAL NOT NULL
+);
+CREATE INDEX idx_enterprise_tower ON enterprise_account (enodeb_name);
+
+-- owned by enterprise-mcp: service credits that were approved and issued
+CREATE TABLE sla_credit (
+    seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+    credit_id   TEXT UNIQUE,
+    account_id  TEXT NOT NULL REFERENCES enterprise_account (account_id),
+    from_min    INTEGER NOT NULL,
+    hours       REAL NOT NULL,
+    amount_rm   REAL NOT NULL,
+    issued_min  INTEGER NOT NULL,
+    issued_at   TEXT NOT NULL,
+    approved_by TEXT NOT NULL,
+    reason      TEXT NOT NULL
+);
+
+-- base (seed only): fictional crowd events, served by events-mcp. Invented names and crowd sizes.
+CREATE TABLE crowd_event (
+    event_id   TEXT PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE,
+    kind       TEXT NOT NULL CHECK (kind IN ('FESTIVAL', 'MATCH', 'CONCERT', 'EXODUS')),
+    town       TEXT NOT NULL,
+    lat        REAL NOT NULL,
+    lng        REAL NOT NULL,
+    radius_km  REAL NOT NULL,
+    start_min  INTEGER NOT NULL,
+    end_min    INTEGER NOT NULL,
+    attendance INTEGER NOT NULL
+);
+
+-- base (seed only): quality-on-demand products, served by exposure-mcp. Invented prices and capacity.
+CREATE TABLE qod_profile (
+    profile_id                  TEXT PRIMARY KEY,
+    name                        TEXT NOT NULL,
+    description                 TEXT NOT NULL,
+    guaranteed                  TEXT NOT NULL,
+    headroom_prb                REAL NOT NULL,
+    price_rm_per_hour_per_tower REAL NOT NULL
+);
+
+-- owned by exposure-mcp: bookings that were approved and made
+CREATE TABLE qod_booking (
+    seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id  TEXT UNIQUE,
+    profile_id  TEXT NOT NULL REFERENCES qod_profile (profile_id),
+    towers      TEXT NOT NULL,
+    customer    TEXT NOT NULL,
+    from_min    INTEGER NOT NULL,
+    to_min      INTEGER NOT NULL,
+    price_rm    REAL NOT NULL,
+    approved_by TEXT NOT NULL,
+    reason      TEXT NOT NULL
+);
+
+-- base (seed only): fictional field technicians and spare parts, served by field-mcp. Invented names and stock.
+CREATE TABLE technician (
+    tech_id          TEXT PRIMARY KEY,
+    name             TEXT NOT NULL UNIQUE,
+    depot_id         TEXT NOT NULL,
+    lat              REAL NOT NULL,
+    lng              REAL NOT NULL,
+    skills           TEXT NOT NULL,
+    shift_start_hour INTEGER NOT NULL,
+    shift_end_hour   INTEGER NOT NULL
+);
+
+CREATE TABLE spare_part (
+    depot_id TEXT NOT NULL,
+    part     TEXT NOT NULL CHECK (part IN ('GENERATOR', 'RECTIFIER', 'BATTERY', 'ANTENNA')),
+    qty      INTEGER NOT NULL,
+    PRIMARY KEY (depot_id, part)
+);
+
+-- owned by field-mcp: work orders that were approved and dispatched (status is derived from the scenario clock)
+CREATE TABLE field_job (
+    seq            INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id         TEXT UNIQUE,
+    tech_id        TEXT NOT NULL REFERENCES technician (tech_id),
+    enodeb_name    TEXT NOT NULL REFERENCES tower (enodeb_name),
+    task           TEXT NOT NULL,
+    skill          TEXT NOT NULL,
+    dispatched_min INTEGER NOT NULL,
+    dispatched_at  TEXT NOT NULL,
+    eta_min        INTEGER NOT NULL,
+    access         TEXT NOT NULL CHECK (access IN ('ROAD', 'BOAT')),
+    approved_by    TEXT NOT NULL,
+    reason         TEXT NOT NULL
+);
+
+-- base (seed only): fictional smart-city sensors, served by sensors-mcp. Invented readings; the water ones follow the local river gauge.
+CREATE TABLE iot_sensor (
+    sensor_id    TEXT PRIMARY KEY,
+    kind         TEXT NOT NULL CHECK (kind IN ('WATER_LEVEL', 'RAIN', 'AIR_QUALITY')),
+    name         TEXT NOT NULL,
+    town         TEXT NOT NULL,
+    lat          REAL NOT NULL,
+    lng          REAL NOT NULL,
+    owner        TEXT NOT NULL,
+    enodeb_name  TEXT NOT NULL REFERENCES tower (enodeb_name),
+    unit         TEXT NOT NULL,
+    warn_value   REAL NOT NULL,
+    danger_value REAL NOT NULL
+);
+CREATE INDEX idx_sensor_geo ON iot_sensor (lat, lng);
+
+CREATE TABLE iot_reading (
+    sensor_id TEXT NOT NULL REFERENCES iot_sensor (sensor_id),
+    t_min     INTEGER NOT NULL,
+    value     REAL NOT NULL,
+    PRIMARY KEY (sensor_id, t_min)
+);
+
+-- base (seed only): generic scam patterns and hourly counts per town, served by scam-mcp. Invented numbers.
+-- Counts only: no phone number, sender, recipient or message of a real person is stored.
+CREATE TABLE scam_pattern (
+    pattern_id TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    kind       TEXT NOT NULL CHECK (kind IN ('VOICE', 'SMS', 'MESSAGING')),
+    severity   TEXT NOT NULL CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH')),
+    example    TEXT NOT NULL,
+    advice     TEXT NOT NULL
+);
+
+CREATE TABLE scam_signal (
+    pattern_id TEXT NOT NULL REFERENCES scam_pattern (pattern_id),
+    town       TEXT NOT NULL,
+    t_min      INTEGER NOT NULL,
+    reports    INTEGER NOT NULL,
+    blocked    INTEGER NOT NULL,
+    PRIMARY KEY (pattern_id, town, t_min)
+);
 """

@@ -82,6 +82,13 @@ ACTIONS: dict[str, ActionProfile] = {
     "hardware_replace": ActionProfile(
         "Replace hardware", always_ask="Hardware replacement is never automated."
     ),
+    "energy_sleep_cells": ActionProfile("Put idle capacity layers to sleep for the night (energy-mcp)"),
+    "exposure_book_qod": ActionProfile(
+        "Book quality on demand for a customer (exposure-mcp)", always_ask="Selling a network service needs a human decision."
+    ),
+    "enterprise_issue_credit": ActionProfile(
+        "Issue an SLA service credit to a business customer (enterprise-mcp)", always_ask="Moving money needs a human decision."
+    ),
 }
 
 
@@ -562,4 +569,3 @@ def get_audit(conn: sqlite3.Connection, limit: int = 50) -> Envelope[AuditTrail]
         for r in rows
     ]
     return wrap(conn, source=SOURCE, tool="policy_get_audit", data=AuditTrail(entries=entries, returned=len(entries)))
-

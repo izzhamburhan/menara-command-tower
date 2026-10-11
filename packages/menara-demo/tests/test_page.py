@@ -105,3 +105,47 @@ def test_every_stage_of_the_loop_has_a_place_on_the_page() -> None:
     text = page()
     for stage in ("detect", "diagnose", "simulate", "approve", "apply", "verify", "rollback", "recover"):
         assert f'"{stage}"' in text or f"'{stage}'" in text, stage
+        assert f'"{stage}"' in text or f"'{stage}'" in text, stage
+
+NEW_TOOLS = (
+    "energy_get_tower", "energy_find_savings", "energy_apply_sleep", "care_get_impact", "care_draft_notice", "care_send_notice",
+    "care_list_notices", "enterprise_get_revenue_at_risk", "enterprise_list_accounts", "enterprise_issue_credit",
+    "exposure_list_profiles", "exposure_quote", "exposure_book", "field_find_crew", "field_dispatch", "field_list_jobs",
+    "events_list_upcoming", "events_forecast_load", "events_capacity_plan", "sensors_list_in_area", "sensors_get_readings",
+    "sensors_get_alerts", "scam_get_hotspots", "scam_get_pattern", "scam_estimate_protection",
+)
+
+
+def test_the_page_has_the_tracks_hooks() -> None:
+    text = page()
+    for needle in (
+        'id="tabTracks"', 'id="paneTracks"', 'id="trackCards"', 'id="tracksReplay"', 'id="tracksCancel"', 'id="tracksDecide"',
+        "/api/tracks/state", 'event.type === "track"', 'script: "tracks"', 'scene === "tracks"',
+    ):
+        assert needle in text, needle
+
+
+def test_all_six_tracks_are_named_on_the_page() -> None:
+    text = page()
+    for name in (
+        "Industry and Operations", "Workforce Productivity", "Customer Experience", "Networks and Infrastructure",
+        "Sustainability and Smart Nation", "Revenue Streams",
+    ):
+        assert name in text, name
+
+
+def examples_block() -> str:
+    match = re.search(r"const EXAMPLES = \{(.*?)\n\};", page(), flags=re.S)
+    assert match
+    return match.group(1)
+
+
+def test_every_new_tool_has_a_console_example() -> None:
+    block = examples_block()
+    assert [t for t in NEW_TOOLS if f"{t}:" not in block] == []
+
+
+def test_the_reset_message_knows_the_new_tables() -> None:
+    text = page()
+    for table in ("energy_action", "care_notice", "sla_credit", "qod_booking", "field_job"):
+        assert table in text, table

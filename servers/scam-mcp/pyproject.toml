@@ -1,0 +1,22 @@
+[project]
+name = "scam-mcp"
+version = "0.1.0"
+description = "MCP server: Scam hotspots (counts only) and how many customers a shield would protect (synthetic data)."
+requires-python = ">=3.13"
+dependencies = [
+    "menara-core",
+    "mcp[cli]>=1.9,<2",
+]
+
+[project.scripts]
+scam-mcp = "scam_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scam_mcp"]
+
+[tool.uv.sources]
+menara-core = { workspace = true }

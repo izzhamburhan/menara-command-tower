@@ -22,6 +22,8 @@ MAX_PINS = 40
 HIGH_PRB = 85.0
 GAUGE_KM = 1.5
 GAUGE_TONE = {"DANGER": "bad", "WARNING": "warn"}
+BOOKING_KM = 2.0
+RISK_TONE = {"HIGH": "bad", "MEDIUM": "warn", "LOW": "ok"}
 
 
 class _Places:
@@ -40,6 +42,19 @@ class _Places:
     def site(self, site_id: str) -> tuple[float, float] | None:
         row = self._conn.execute("SELECT lat, lng FROM critical_site WHERE critical_site_id = ?", (site_id,)).fetchone()
         return (float(row["lat"]), float(row["lng"])) if row else None
+
+
+    def technician(self, tech_id: str) -> tuple[float, float] | None:
+        row = self._conn.execute("SELECT lat, lng FROM technician WHERE tech_id = ?", (tech_id,)).fetchone()
+        return (float(row["lat"]), float(row["lng"])) if row else None
+
+    def sensor(self, sensor_id: str) -> tuple[float, float] | None:
+        row = self._conn.execute("SELECT lat, lng FROM iot_sensor WHERE sensor_id = ?", (sensor_id,)).fetchone()
+        return (float(row["lat"]), float(row["lng"])) if row else None
+
+    def event(self, event_id: str) -> tuple[float, float, float] | None:
+        row = self._conn.execute("SELECT lat, lng, radius_km FROM crowd_event WHERE event_id = ?", (event_id,)).fetchone()
+        return (float(row["lat"]), float(row["lng"]), float(row["radius_km"])) if row else None
 
 
 def _effect(kind: str, position: tuple[float, float], label: str, tone: str, **extra: Any) -> Effect:
@@ -172,6 +187,96 @@ def _tickets(places: _Places, tool: str, arguments: dict[str, Any], data: dict[s
     return effects[:MAX_PINS]
 
 
+def _list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _dicts(value: Any) -> list[dict[str, Any]]:
+    return [v for v in value if isinstance(v, dict)] if isinstance(value, list) else []
+
+
+def _field_dispatch(places: _Places, tool: str, arguments: dict[str, Any], data: dict[str, Any]) -> list[Effect]:
+    tower = data.get("enodeb_name") if isinstance(data.get("enodeb_name"), str) else arguments.get("enodeb_name")
+    position = places.tower(tower) if isinstance(tower, str) else None
+    if position is None:
+        return []
+    access = str(data.get("access", "ROAD")).lower()
+    effects = [_effect("pin", position, f"{data.get('job_id', 'Job')} {data.get('tech_name', 'technician')} by {access}", "info", icon="crew")]
+    home = places.technician(str(data.get("tech_id") or arguments.get("tech_id") or ""))
+    if home is not None:
+        effects.append(_effect("link", home, f"{data.get('tech_name', 'Technician')} to {tower} by {access}", "info", to=[position[0], position[1]]))
+    return effects
+
+
+def _energy_sleep(places: _Places, tool: str, arguments: dict[str, Any], data: dict[str, Any]) -> list[Effect]:
+    effects: list[Effect] = []
+    for action in _dicts(data.get("actions")):
+        position = places.tower(str(action.get("enodeb_name", "")))
+        if position is not None:
+            effects.append(_effect("focus", position, f"{action.get('action_id', 'Sleep')} asleep, {action.get('kwh_saved', '?')} kWh saved", "ok"))
+    return effects[:MAX_PINS]
+
+
+def _energy_savings(places: _Places, tool: str, arguments: dict[str, Any], data: dict[str, Any]) -> list[Effect]:
+    effects: list[Effect] = []
+    for candidate in _dicts(data.get("candidates")):
+        position = places.tower(str(candidate.get("enodeb_name", "")))
+        if position is not None:
+            effects.append(_effect("pin", position, f"{candidate['enodeb_name']} can sleep, {candidate.get('kwh_saved', '?')} kWh", "ok", icon="tower"))
+    return effects[:MAX_PINS]
+
+
+def _exposure_book(places: _Places, tool: str, arguments: dict[str, Any], data: dict[str, Any]) -> list[Effect]:
+    effects: list[Effect] = []
+    for name in _list(data.get("towers")):
+        position = places.tower(name) if isinstance(name, str) else None
+        if position is not None:
+            effects.append(_effect("area", position, f"{data.get('booking_id', 'Booking')} reserved at {name}", "ok", radius_km=BOOKING_KM))
+    return effects[:MAX_PINS]
+
+
+def _sensor_alerts(places: _Places, tool: str, arguments: dict[str, Any], data: dict[str, Any]) -> list[Effect]:
+    effects: list[Effect] = []
+    for alert in _dicts(data.get("alerts")):
+        position = places.sensor(str(alert.get("sensor_id", "")))
+        if position is not None:
+            tone = GAUGE_TONE.get(str(alert.get("status")), "ok")
+            effects.append(_effect("pin", position, f"{alert.get('name', 'Sensor')} {alert.get('value', '')} {alert.get('unit', '')} {alert.get('status', '')}".strip(), tone, icon="sensor"))
+    return effects[:MAX_PINS]
+
+
+def _event_forecast(places: _Places, tool: str, arguments: dict[str, Any], data: dict[str, Any]) -> list[Effect]:
+    venue = places.event(str(data.get("event_id", "")))
+    if venue is None:
+        return []
+    risk = str(data.get("overall_risk", ""))
+    effects = [_effect("ring", (venue[0], venue[1]), f"{data.get('name', 'Event')}: {risk} load risk", RISK_TONE.get(risk, "info"), radius_km=venue[2])]
+    for tower in _dicts(data.get("towers")):
+        position = places.tower(str(tower.get("enodeb_name", "")))
+        if position is not None:
+            effects.append(_effect("pin", position, f"{tower['enodeb_name']} {tower.get('risk', '')}".strip(), RISK_TONE.get(str(tower.get("risk")), "info"), icon="tower"))
+    return effects[:MAX_PINS]
+
+
+def _care_impact(places: _Places, tool: str, arguments: dict[str, Any], data: dict[str, Any]) -> list[Effect]:
+    effects: list[Effect] = []
+    for name in _list(data.get("affected_towers")):
+        position = places.tower(name) if isinstance(name, str) else None
+        if position is not None:
+            effects.append(_effect("pin", position, f"{name} affected, {data.get('affected_customers', '?')} customers", "warn", icon="tower"))
+    return effects[:MAX_PINS]
+
+
+def _enterprise_risk(places: _Places, tool: str, arguments: dict[str, Any], data: dict[str, Any]) -> list[Effect]:
+    effects: list[Effect] = []
+    for account in _dicts(data.get("accounts")):
+        position = places.tower(str(account.get("enodeb_name", "")))
+        if position is not None:
+            tone = "bad" if account.get("status") == "DOWN" else "warn"
+            effects.append(_effect("pin", position, f"{account.get('name', 'Account')} {account.get('status', '')}".strip(), tone, icon="business"))
+    return effects[:MAX_PINS]
+
+
 Handler = Callable[[_Places, str, dict[str, Any], dict[str, Any]], list[Effect]]
 HANDLERS: dict[str, Handler] = {
     "ontology_blast_radius": _blast,
@@ -180,6 +285,15 @@ HANDLERS: dict[str, Handler] = {
     "drone_dispatch": _drone,
     "drone_get_mission": _drone,
     "ticket_cluster_by_location": _tickets,
+    "field_dispatch": _field_dispatch,
+    "energy_apply_sleep": _energy_sleep,
+    "energy_find_savings": _energy_savings,
+    "exposure_book": _exposure_book,
+    "sensors_get_alerts": _sensor_alerts,
+    "events_forecast_load": _event_forecast,
+    "events_capacity_plan": _event_forecast,
+    "care_get_impact": _care_impact,
+    "enterprise_get_revenue_at_risk": _enterprise_risk,
 }
 NO_MAP = {"user_get_trail", "user_get_serving_cell", "user_get_experience", "user_list_in_area", "user_list_on_tower"}
 

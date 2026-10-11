@@ -135,3 +135,90 @@ def test_no_effect_carries_a_subscriber_hash(db: Path) -> None:
     result = wrap({"msisdn_hash": HASH, "enodeb_name": "KKRI-0142", "status": "DOWN", "segments": [{"enodeb_name": "KKRI-0142"}]})
     effects = effects_for(db, "user_get_serving_cell", {"msisdn_hash": HASH}, result)
     assert HASH not in json.dumps(effects)
+    assert HASH not in json.dumps(effects)
+
+def first_technician(db: Path) -> tuple[str, float, float]:
+    import sqlite3
+
+    with sqlite3.connect(db) as conn:
+        tech_id, lat, lng = conn.execute("SELECT tech_id, lat, lng FROM technician ORDER BY tech_id LIMIT 1").fetchone()
+    return str(tech_id), float(lat), float(lng)
+
+
+def test_a_field_dispatch_links_the_technician_home_to_the_tower_with_the_access_mode(db: Path) -> None:
+    tech_id, lat, lng = first_technician(db)
+    job = wrap({"job_id": "JOB-0001", "tech_id": tech_id, "tech_name": "A (synthetic)", "enodeb_name": "KKRI-0142", "access": "BOAT", "eta_min": 98})
+    effects = effects_for(db, "field_dispatch", {"enodeb_name": "KKRI-0142", "tech_id": tech_id}, job)
+    pin = next(e for e in effects if e["kind"] == "pin")
+    link = next(e for e in effects if e["kind"] == "link")
+    assert "JOB-0001" in pin["label"] and "boat" in pin["label"].lower() and pin["tone"] == "info"
+    assert (link["lat"], link["lng"]) == (lat, lng) and link["to"] == [pin["lat"], pin["lng"]]
+    valid(effects)
+
+
+def test_an_energy_sleep_quietly_focuses_each_tower(db: Path) -> None:
+    result = wrap({"actions": [{"action_id": "ENA-0001", "enodeb_name": "KKRI-0143", "kwh_saved": 3.9}, {"action_id": "ENA-0002", "enodeb_name": "KKRI-0144", "kwh_saved": 4.1}]})
+    effects = effects_for(db, "energy_apply_sleep", {"enodeb_names": ["KKRI-0143", "KKRI-0144"], "policy_token": "t"}, result)
+    assert [(e["kind"], e["tone"]) for e in effects] == [("focus", "ok"), ("focus", "ok")] and "ENA-0001" in effects[0]["label"]
+    valid(effects)
+
+
+def test_energy_savings_pin_the_candidates(db: Path) -> None:
+    result = wrap({"candidates": [{"enodeb_name": "KKRI-0143", "kwh_saved": 3.9}, {"enodeb_name": "ZZZZ-9999", "kwh_saved": 1.0}]})
+    effects = effects_for(db, "energy_find_savings", {"lat": 5.5, "lng": 102.2}, result)
+    assert len(effects) == 1 and effects[0]["kind"] == "pin" and "KKRI-0143" in effects[0]["label"]
+
+
+def test_an_exposure_booking_draws_an_area_around_each_tower(db: Path) -> None:
+    result = wrap({"booking_id": "BKG-0001", "towers": ["KKRI-0143", "KKRI-0144"], "price_rm": 4050.0})
+    effects = effects_for(db, "exposure_book", {"enodeb_names": ["KKRI-0143", "KKRI-0144"]}, result)
+    assert [e["kind"] for e in effects] == ["area", "area"] and all(e["radius_km"] > 0 and "BKG-0001" in e["label"] for e in effects)
+    valid(effects)
+
+
+def test_sensor_alerts_pin_the_sensors_from_the_database(db: Path) -> None:
+    import sqlite3
+
+    with sqlite3.connect(db) as conn:
+        sensor_id, lat, lng = conn.execute("SELECT sensor_id, lat, lng FROM iot_sensor WHERE kind = 'WATER_LEVEL' ORDER BY sensor_id LIMIT 1").fetchone()
+    alerts = [{"sensor_id": sensor_id, "name": "River gauge (synthetic)", "value": 26.1, "unit": "m", "status": "DANGER"}]
+    effects = effects_for(db, "sensors_get_alerts", {"lat": lat, "lng": lng}, wrap({"alerts": alerts}))
+    assert [(e["kind"], e["tone"]) for e in effects] == [("pin", "bad")] and (effects[0]["lat"], effects[0]["lng"]) == (lat, lng)
+    valid(effects)
+
+
+def test_a_crowd_event_forecast_rings_the_venue_and_pins_the_serving_towers_by_risk(db: Path) -> None:
+    import sqlite3
+
+    with sqlite3.connect(db) as conn:
+        event_id, lat, lng = conn.execute("SELECT event_id, lat, lng FROM crowd_event WHERE name LIKE '%Derby%'").fetchone()
+    forecast = {"event_id": event_id, "name": "Derby (synthetic)", "overall_risk": "HIGH", "towers": [{"enodeb_name": "KKRI-0143", "risk": "HIGH"}, {"enodeb_name": "KKRI-0144", "risk": "LOW"}]}
+    effects = effects_for(db, "events_forecast_load", {"event_id": event_id}, wrap(forecast))
+    ring = next(e for e in effects if e["kind"] == "ring")
+    assert (ring["lat"], ring["lng"]) == (lat, lng) and ring["tone"] == "bad"
+    assert [e["tone"] for e in effects if e["kind"] == "pin"] == ["bad", "ok"]
+    valid(effects)
+
+
+def test_care_impact_and_enterprise_risk_mark_the_affected_towers(db: Path) -> None:
+    care = effects_for(db, "care_get_impact", {"enodeb_names": ["KKRI-0142"]}, wrap({"affected_towers": ["KKRI-0142"], "affected_customers": 980}))
+    assert [(e["kind"], e["tone"]) for e in care] == [("pin", "warn")]
+    risk = effects_for(db, "enterprise_get_revenue_at_risk", {}, wrap({"accounts": [{"name": "Acme (synthetic)", "enodeb_name": "KKRI-0142", "status": "DOWN"}]}))
+    assert [(e["kind"], e["tone"]) for e in risk] == [("pin", "bad")] and "Acme" in risk[0]["label"]
+    valid(care + risk)
+
+
+@pytest.mark.parametrize(
+    ("name", "text"),
+    [
+        ("field_dispatch", wrap({"job_id": "JOB-1", "tech_id": "TECH-NONE", "enodeb_name": "ZZZZ-9999"})),
+        ("energy_apply_sleep", wrap({"actions": "x"})),
+        ("exposure_book", wrap({"towers": [1, None]})),
+        ("sensors_get_alerts", wrap({"alerts": [{"sensor_id": "NOPE"}, 3]})),
+        ("events_forecast_load", wrap({"event_id": "EV-NONE", "towers": 5})),
+        ("care_get_impact", wrap({"affected_towers": "x"})),
+        ("enterprise_get_revenue_at_risk", wrap({"accounts": [None]})),
+    ],
+)
+def test_odd_shapes_from_the_new_tools_give_no_effects(db: Path, name: str, text: str) -> None:
+    assert effects_for(db, name, {}, text) == []

@@ -1,0 +1,1 @@
+"""exposure-mcp: Quality on demand: profiles, a feasibility quote and a booking. Synthetic data only."""

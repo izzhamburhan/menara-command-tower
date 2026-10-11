@@ -66,6 +66,26 @@ def dirty(db_file: Path) -> None:
         conn.execute("INSERT INTO audit_log (at, actor, action, target, decision, detail) VALUES (?, 'agent', 'a', 't', 'ask', 'd')", (AT,))
         conn.execute("INSERT INTO ticket_note (ticket_id, at, author, text) VALUES (?, ?, 'agent', 'n')", (ticket, AT))
         conn.execute("INSERT INTO ticket_resolution VALUES (?, 20, ?, 'agent', 'done')", (ticket, AT))
+        conn.execute(
+            "INSERT INTO care_notice (notice_id, kind, towers, language, recipients_est, message, sent_min, sent_at, approved_by, tickets_deflected_est) "
+            "VALUES ('NTC-0001', 'OUTAGE', 'KKRI-0142', 'en', 980, 'm', 12, ?, 'human', 24)", (AT,)
+        )
+        conn.execute(
+            "INSERT INTO sla_credit (credit_id, account_id, from_min, hours, amount_rm, issued_min, issued_at, approved_by, reason) "
+            "VALUES ('CRD-0001', 'ACC-0001', 12, 2, 400, 12, ?, 'human', 'r')", (AT,)
+        )
+        conn.execute(
+            "INSERT INTO qod_booking (booking_id, profile_id, towers, customer, from_min, to_min, price_rm, approved_by, reason) "
+            "VALUES ('BKG-0001', 'BROADCAST_UPLINK', 'KKRI-0143', 'Fictional Crew', 12, 72, 450, 'human', 'r')"
+        )
+        conn.execute(
+            "INSERT INTO field_job (job_id, tech_id, enodeb_name, task, skill, dispatched_min, dispatched_at, eta_min, access, approved_by, reason) "
+            "VALUES ('JOB-0001', 'TECH-001', 'KKRI-0142', 't', 'POWER', 12, ?, 90, 'BOAT', 'human', 'r')", (AT,)
+        )
+        conn.execute(
+            "INSERT INTO energy_action (action_id, enodeb_name, kind, from_min, to_min, kwh_saved, co2_kg_saved, approved_by, reason) "
+            "VALUES ('ENA-0001', 'KKRI-0143', 'SLEEP', 1200, 1560, 3.0, 1.75, 'human', 'r')"
+        )
         conn.execute("UPDATE policy_setting SET value = '1' WHERE key = 'kill_switch'")
         conn.execute("UPDATE policy_setting SET value = '999' WHERE key = 'auto_allow_max_subscribers'")
         conn.commit()
@@ -111,7 +131,7 @@ def test_reset_clears_every_runtime_table_and_reports_the_counts(played: Path, s
 def test_the_runtime_tables_are_exactly_the_ones_servers_write(played: Path) -> None:
     assert set(RUNTIME_TABLES) == {
         "incident", "incident_ticket", "twin_simulation", "ran_change", "ran_change_item", "ran_kpi_effect",
-        "drone_mission", "approval", "audit_log", "ticket_note", "ticket_resolution",
+        "drone_mission", "approval", "audit_log", "ticket_note", "ticket_resolution", "energy_action", "care_notice", "sla_credit", "qod_booking", "field_job",
     }
 
 

@@ -29,6 +29,7 @@ from starlette.routing import Route
 from menara_demo.app_types import Hub, HubFactory
 from menara_demo.heal import heal_state
 from menara_demo.runs import RunManager
+from menara_demo.tracks import tracks_state
 from menara_demo.trail_story import (
     DEFAULT_WINDOW_MIN,
     MAX_WINDOW_MIN,
@@ -46,6 +47,13 @@ DEFAULT_TASK = (
     "inspection of the failed tower and report what it finds. Then relieve the overloaded neighbour towers with a "
     "tilt: simulate first, apply it through policy, verify with KPIs, and roll back if it does not help."
 )
+TRACKS_TASK = (
+    "The Kuala Krai flood, across all six hackathon tracks: save energy the night before, run the incident, tell the "
+    "customers, credit the affected business accounts, send a crew, then sell and plan for the next big event. "
+    "Every real-world action goes through policy and a human."
+)
+TRACKS_START_MIN = -300  # 02:00 the night before: inside the energy sleep window
+SCRIPTS = {"incident", "tracks"}
 NO_KEY = "No model key: put DEEPSEEK_API_KEY in the .env file at the repo root, then restart the demo. Replay works without it."
 
 
@@ -191,13 +199,16 @@ def create_app(
         mode = body.get("mode")
         if mode not in {"live", "replay"}:
             return _bad("mode must be live or replay")
-        task = body.get("task", DEFAULT_TASK if mode == "replay" else None)
+        script = body.get("script", "incident")
+        if not isinstance(script, str) or script not in SCRIPTS:
+            return _bad("script must be incident or tracks")
+        task = body.get("task", (TRACKS_TASK if script == "tracks" else DEFAULT_TASK) if mode == "replay" else None)
         if not isinstance(task, str) or not task.strip():
             return _bad("task must be a non-empty string")
-        start = body.get("clock", 12)
+        start = body.get("clock", TRACKS_START_MIN if script == "tracks" and mode == "replay" else 12)
         if not _int_in(start, MIN_T_MIN, MAX_T_MIN):
             return _bad(f"clock must be an integer from {MIN_T_MIN} to {MAX_T_MIN}")
-        steps = body.get("max_steps", 40)
+        steps = body.get("max_steps", 80 if script == "tracks" else 40)
         if not _int_in(steps, 1, MAX_STEPS):
             return _bad(f"max_steps must be an integer from 1 to {MAX_STEPS}")
         if mode == "live" and llm is None:
@@ -205,7 +216,7 @@ def create_app(
         manager = runs(request)
         if manager.running:
             return _bad("A run is already in progress. Cancel it or wait for it to finish.", 409)
-        return JSONResponse({"ok": True, "run_id": manager.start(mode, task.strip(), start, steps)})
+        return JSONResponse({"ok": True, "run_id": manager.start(mode, task.strip(), start, steps, script)})
 
     async def agent_events(request: Request) -> Response:
         manager = runs(request)
@@ -237,6 +248,11 @@ def create_app(
         state = await heal_state(request.app.state.hub, now["t_min"], now["as_of"])
         return JSONResponse({"ok": True, **state})
 
+    async def tracks_route(request: Request) -> Response:
+        now = read_clock_body()
+        state = await tracks_state(request.app.state.hub, db_file, now["t_min"], now["as_of"])
+        return JSONResponse({"ok": True, **state})
+
     async def reset(request: Request) -> Response:
         manager = runs(request)
         if manager.running:
@@ -265,6 +281,7 @@ def create_app(
             Route("/api/agent/decision", agent_decision, methods=["POST"]),
             Route("/api/agent/cancel", agent_cancel, methods=["POST"]),
             Route("/api/heal/state", heal_route),
+            Route("/api/tracks/state", tracks_route),
             Route("/api/reset", reset, methods=["POST"]),
         ],
         lifespan=lifespan,

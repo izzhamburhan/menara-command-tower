@@ -142,6 +142,94 @@
         "-m",
         "usage_mcp"
       ]
+    },
+    "energy": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "energy-mcp",
+        "python",
+        "-m",
+        "energy_mcp"
+      ]
+    },
+    "care": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "care-mcp",
+        "python",
+        "-m",
+        "care_mcp"
+      ]
+    },
+    "enterprise": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "enterprise-mcp",
+        "python",
+        "-m",
+        "enterprise_mcp"
+      ]
+    },
+    "events": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "events-mcp",
+        "python",
+        "-m",
+        "events_mcp"
+      ]
+    },
+    "exposure": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "exposure-mcp",
+        "python",
+        "-m",
+        "exposure_mcp"
+      ]
+    },
+    "field": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "field-mcp",
+        "python",
+        "-m",
+        "field_mcp"
+      ]
+    },
+    "sensors": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "sensors-mcp",
+        "python",
+        "-m",
+        "sensors_mcp"
+      ]
+    },
+    "scam": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "scam-mcp",
+        "python",
+        "-m",
+        "scam_mcp"
+      ]
     }
   }
 }

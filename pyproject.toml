@@ -26,6 +26,14 @@ dev = [
     "menara-agent",
     "menara-demo",
     "usage-mcp",
+    "energy-mcp",
+    "care-mcp",
+    "enterprise-mcp",
+    "events-mcp",
+    "exposure-mcp",
+    "field-mcp",
+    "sensors-mcp",
+    "scam-mcp",
 ]
 
 [tool.uv]
@@ -35,6 +43,14 @@ package = false
 members = ["packages/*", "servers/*"]
 
 [tool.uv.sources]
+scam-mcp = { workspace = true }
+sensors-mcp = { workspace = true }
+field-mcp = { workspace = true }
+exposure-mcp = { workspace = true }
+events-mcp = { workspace = true }
+enterprise-mcp = { workspace = true }
+care-mcp = { workspace = true }
+energy-mcp = { workspace = true }
 usage-mcp = { workspace = true }
 menara-agent = { workspace = true }
 menara-demo = { workspace = true }
@@ -64,7 +80,7 @@ strict = true
 python_version = "3.13"
 exclude = ["tests/"]
 files = ["packages/menara-core/src", "packages/menara-agent/src", "packages/menara-demo/src", "servers/*/src"]
-mypy_path = ["packages/menara-core/src", "packages/menara-agent/src", "packages/menara-demo/src", "servers/tower-mcp/src", "servers/ticket-mcp/src", "servers/user-mcp/src", "servers/weather-mcp/src", "servers/grid-mcp/src", "servers/flood-mcp/src", "servers/sites-mcp/src", "servers/ontology-mcp/src", "servers/policy-mcp/src", "servers/twin-mcp/src", "servers/ran-mcp/src", "servers/drone-mcp/src", "servers/usage-mcp/src"]
+mypy_path = ["packages/menara-core/src", "packages/menara-agent/src", "packages/menara-demo/src", "servers/tower-mcp/src", "servers/ticket-mcp/src", "servers/user-mcp/src", "servers/weather-mcp/src", "servers/grid-mcp/src", "servers/flood-mcp/src", "servers/sites-mcp/src", "servers/ontology-mcp/src", "servers/policy-mcp/src", "servers/twin-mcp/src", "servers/ran-mcp/src", "servers/drone-mcp/src", "servers/usage-mcp/src", "servers/energy-mcp/src", "servers/care-mcp/src", "servers/enterprise-mcp/src", "servers/events-mcp/src", "servers/exposure-mcp/src", "servers/field-mcp/src", "servers/sensors-mcp/src", "servers/scam-mcp/src"]
 explicit_package_bases = true
 
 [tool.pytest.ini_options]
