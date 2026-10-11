@@ -69,18 +69,20 @@ STEPS: list[Step] = [
     ("drone_get_mission", lambda r: {"mission_id": _dig(r[10], "data", "mission_id") or "MIS-0001"}),
     ("policy_check_action", lambda r: {"action": "ran_tilt_cells", "targets": NEIGHBOURS, "confidence": 0.93, "reason": "Simulation recommends it"}),
     ("ran_tilt_cells", lambda r: {"changes": TILT, "policy_token": _token(r[13]), "reason": "Relieve the overloaded neighbours"}),
+    ("demo_advance_clock", lambda r: {"minutes": 10}),  # watch the KPIs for a while before judging the fix
     ("tower_get_kpi", lambda r: {"enodeb_name": "KKRI-0143", "window_min": 5}),
     ("tower_get_kpi", lambda r: {"enodeb_name": "KKRI-0144", "window_min": 5}),
     ("policy_check_action", lambda r: {"action": "ran_revert_tilt", "targets": NEIGHBOURS, "confidence": 0.99, "reason": "KKRI-0143 did not improve"}),
-    ("ran_revert_change", lambda r: {"change_id": _dig(r[14], "data", "change_id") or "CHG-0001", "policy_token": _token(r[17]), "reason": "Fix did not improve KPIs"}),
+    ("ran_revert_change", lambda r: {"change_id": _dig(r[14], "data", "change_id") or "CHG-0001", "policy_token": _token(r[18]), "reason": "Fix did not improve KPIs"}),
     ("policy_check_action", lambda r: {"action": "ran_tilt_cells", "targets": NEIGHBOURS, "confidence": 0.93, "reason": "Second attempt"}),
-    ("ran_tilt_cells", lambda r: {"changes": TILT, "policy_token": _token(r[19]), "reason": "Second attempt"}),
+    ("ran_tilt_cells", lambda r: {"changes": TILT, "policy_token": _token(r[20]), "reason": "Second attempt"}),
+    ("demo_advance_clock", lambda r: {"minutes": 10}),
     ("tower_get_kpi", lambda r: {"enodeb_name": "KKRI-0143", "window_min": 5}),
     ("ontology_update_incident", lambda r: {"incident_id": _incident_id(r), "status": "MITIGATING", "note": "Neighbours re-tilted, load relieved"}),
     ("demo_advance_clock", lambda r: {"minutes": 300}),
     ("tower_get_status", lambda r: {"enodeb_name": TOWER}),
     ("policy_check_action", lambda r: {"action": "ran_revert_tilt", "targets": NEIGHBOURS, "confidence": 0.99, "reason": "Power is back; restore the original tilt"}),
-    ("ran_revert_change", lambda r: {"change_id": _dig(r[20], "data", "change_id") or "CHG-0002", "policy_token": _token(r[25]), "reason": "Power is back"}),
+    ("ran_revert_change", lambda r: {"change_id": _dig(r[21], "data", "change_id") or "CHG-0002", "policy_token": _token(r[27]), "reason": "Power is back"}),
     ("ontology_update_incident", lambda r: {"incident_id": _incident_id(r), "status": "RESOLVED", "note": "Power restored, tilt rolled back"}),
 ]
 

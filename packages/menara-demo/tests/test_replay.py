@@ -117,3 +117,32 @@ def test_replay_twice_with_a_reset_between_gives_the_same_ids(client: TestClient
     assert client.get("/api/agent/events").json()["events"] == []
     second = play(client, [True, True, True])
     assert second["status"] == "done" and ids_in(second) == first_ids
+
+def test_replay_emits_the_eight_stages_in_order(client: TestClient) -> None:
+    state = play(client, [True, True, True])
+    heals = [e for e in state["events"] if e["type"] == "heal"]
+    stages = [h["stage"] for h in heals]
+    first = [stages.index(s) for s in ("detect", "diagnose", "simulate", "approve", "apply", "verify", "rollback", "recover")]
+    assert first == sorted(first)
+    second_tilt = next(i for i, h in enumerate(heals) if h["stage"] == "apply" and h["attempt"] == 2)
+    assert stages.index("rollback") < second_tilt and stages[-1] in {"recover", "verify", "approve", "rollback"}
+    assert [h["attempt"] for h in heals if h["stage"] == "apply" and h["attempt"]] == [1, 2]
+    assert any(h["label"] == "Human approved" for h in heals)
+
+
+def test_heal_state_after_the_replay_shows_the_failed_then_the_good_tilt(client: TestClient) -> None:
+    before = client.get("/api/heal/state").json()
+    assert before["ok"] is True and before["changes"] == [] and before["incident"] is None
+    play(client, [True, True, True])
+    state = client.get("/api/heal/state").json()
+    assert state["failed_tower"] == "KKRI-0142" and state["incident"]["status"] == "RESOLVED"
+    assert {"KKRI-0143", "KKRI-0144"} <= set(state["watched"])
+    first, second = state["changes"][0], state["changes"][1]
+    assert first["status"] == "REVERTED" and first["reverted_min"] is not None
+    series = state["series"]["KKRI-0143"]
+    before_fix = [p["prb"] for p in series if 0 <= p["t_min"] < first["applied_min"]]  # from T0: the overload began at -5
+    after_first = [p["prb"] for p in series if first["applied_min"] <= p["t_min"] < first["reverted_min"]]
+    during_second = [p["prb"] for p in series if second["applied_min"] <= p["t_min"] < (second["reverted_min"] or 10**6)]
+    assert before_fix and min(before_fix) >= state["threshold"]
+    assert after_first and min(after_first) >= state["threshold"]  # the first tilt did not help enough
+    assert during_second and max(during_second) < state["threshold"]  # the second one did

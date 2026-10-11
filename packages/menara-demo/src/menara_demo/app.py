@@ -27,6 +27,7 @@ from starlette.responses import HTMLResponse, JSONResponse, Response
 from starlette.routing import Route
 
 from menara_demo.app_types import Hub, HubFactory
+from menara_demo.heal import heal_state
 from menara_demo.runs import RunManager
 from menara_demo.trail_story import (
     DEFAULT_WINDOW_MIN,
@@ -231,6 +232,11 @@ def create_app(
             return _bad("Nothing is waiting for a decision", 409)
         return JSONResponse({"ok": True})
 
+    async def heal_route(request: Request) -> Response:
+        now = read_clock_body()
+        state = await heal_state(request.app.state.hub, now["t_min"], now["as_of"])
+        return JSONResponse({"ok": True, **state})
+
     async def reset(request: Request) -> Response:
         manager = runs(request)
         if manager.running:
@@ -258,6 +264,7 @@ def create_app(
             Route("/api/agent/events", agent_events),
             Route("/api/agent/decision", agent_decision, methods=["POST"]),
             Route("/api/agent/cancel", agent_cancel, methods=["POST"]),
+            Route("/api/heal/state", heal_route),
             Route("/api/reset", reset, methods=["POST"]),
         ],
         lifespan=lifespan,
