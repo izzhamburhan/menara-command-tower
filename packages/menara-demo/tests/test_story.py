@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +37,28 @@ TRAIL = {
 SITES = [  # near AAAA-0001 (0.4 km away) and far from the others
     {"critical_site_id": "CS-1", "name": "Tawau School 7 (synthetic)", "kind": "SCHOOL", "lat": 4.2036, "lng": 117.800, "serving_enodeb": "AAAA-0001"},
     {"critical_site_id": "CS-2", "name": "Tawau Hospital 2 (synthetic)", "kind": "HOSPITAL", "lat": 4.2300, "lng": 117.8300, "serving_enodeb": "AAAA-0002"},
+    {"critical_site_id": "CS-3", "name": "Tawau Mall 3 (synthetic)", "kind": "MALL", "lat": 4.5, "lng": 118.1, "serving_enodeb": "AAAA-0009"},
 ]
+
+
+LONG = "aaaaaaaaaaaaaaaa"
+START = datetime.fromisoformat("2026-10-17T07:12:00+08:00")  # four weeks before the clock at minute 12 (a Saturday)
+
+
+def long_trail() -> dict[str, Any]:
+    """Home all month, with a three-hour trip to the mall tower on a Saturday of each of the four weekends."""
+    stays: list[tuple[str, datetime, int]] = [("AAAA-0001", START, 600)]
+    for weekend in range(4):
+        trip = START.replace(hour=11, minute=0) + timedelta(days=7 * weekend)
+        stays += [("AAAA-0009", trip, 180), ("AAAA-0001", trip + timedelta(minutes=180), 600)]
+    segments = []
+    for index, (tower, arrival, minutes) in enumerate(stays):
+        last = index == len(stays) - 1
+        segments.append(
+            {"serving_cell": f"{tower}-B1", "enodeb_name": tower, "cell_lat": 4.5 if tower == "AAAA-0009" else 4.2, "cell_lng": 118.1 if tower == "AAAA-0009" else 117.8, "arrived_at": arrival.isoformat(),
+             "left_at": None if last else stays[index + 1][1].isoformat(), "duration_min": minutes, "current": last}
+        )
+    return {"synthetic": True, "data": {"msisdn_hash": LONG, "window_min": 40320, "window_start": START.isoformat(), "moves": len(segments) - 1, "segments": segments}}
 
 
 class FakeHub:
@@ -49,7 +71,7 @@ class FakeHub:
         if name == "user_get_trail":
             if arguments["msisdn_hash"] == "ffffffffffffffff":
                 raise RuntimeError(f"Subscriber {arguments['msisdn_hash']} not found")
-            return json.dumps(TRAIL)
+            return json.dumps(long_trail() if arguments["msisdn_hash"] == LONG else TRAIL)
         if name == "sites_list_in_bbox":
             inside = [
                 s for s in SITES
@@ -69,6 +91,10 @@ class RecordingLLM:
         self.seen = messages
         self.tools_given = tools
         return Reply(self.text, [])
+
+
+def prompt_text(llm: RecordingLLM) -> str:
+    return chr(10).join(str(m["content"]) for m in llm.seen)
 
 
 @pytest.fixture
@@ -149,3 +175,47 @@ def test_a_model_failure_is_reported_not_raised(hub: FakeHub, tmp_path: Path) ->
     with TestClient(app) as client:
         reply = client.post("/api/trail/story", json={"msisdn_hash": DIGEST})
     assert reply.status_code == 502 and "upstream timeout" in reply.json()["error"]
+    assert reply.status_code == 502 and "upstream timeout" in reply.json()["error"]
+
+def test_the_story_asks_for_four_weeks_and_returns_routines(client: TestClient, hub: FakeHub) -> None:
+    reply = client.post("/api/trail/story", json={"msisdn_hash": DIGEST}).json()
+    assert ("user_get_trail", {"msisdn_hash": DIGEST, "window_min": 40320}) in hub.calls
+    assert reply["routines"] == reply["facts"]["routines"]
+    assert [r["kind"] for r in reply["routines"]] == ["home"] and "Tawau School 7 (synthetic)" in reply["routines"][0]["sentence"]
+
+
+def test_a_weekend_mall_habit_is_counted_by_the_backend(client: TestClient) -> None:
+    reply = client.get("/api/trail/routines", params={"msisdn_hash": LONG}).json()
+    weekend = [r for r in reply["routines"] if r["kind"] == "weekend"]
+    assert len(weekend) == 1
+    assert weekend[0]["sentence"] == "Weekends: near Tawau Mall 3 (synthetic) on 4 of 4 weekends, usually about 3 h from about 11:00"
+    mall = next(t for t in reply["facts"]["towers"] if t["tower"] == "AAAA-0009")
+    assert mall["nearby_sites"][0]["kind"] == "MALL" and {"lat", "lng"} <= set(mall["nearby_sites"][0])
+    assert mall["weekend_weekends"] == 4 and mall["weekday_days"] == 0
+
+
+def test_routines_work_without_a_model_key(hub: FakeHub, tmp_path: Path) -> None:
+    with client_for(hub, None, tmp_path) as client:
+        reply = client.get("/api/trail/routines", params={"msisdn_hash": LONG})
+    assert reply.status_code == 200 and reply.json()["ok"] is True and "story" not in reply.json()
+
+
+def test_routines_errors_are_mapped(client: TestClient) -> None:
+    assert client.get("/api/trail/routines", params={"msisdn_hash": "nope"}).status_code == 400
+    assert client.get("/api/trail/routines", params={"msisdn_hash": DIGEST, "window_min": "x"}).status_code == 400
+    assert client.get("/api/trail/routines", params={"msisdn_hash": DIGEST, "window_min": "40321"}).status_code == 400
+    assert client.get("/api/trail/routines", params={"msisdn_hash": "ffffffffffffffff"}).status_code == 404
+
+
+def test_the_prompt_sends_routines_and_recent_stops_not_four_weeks_of_segments(client: TestClient, llm: RecordingLLM) -> None:
+    client.post("/api/trail/story", json={"msisdn_hash": LONG})
+    text = prompt_text(llm)
+    assert "Weekends: near Tawau Mall 3 (synthetic) on 4 of 4 weekends" in text
+    assert '"segments"' not in text and "recent_segments" in text
+    for rule in ("never state a frequency that is not in the facts", "routines", "synthetic subscriber"):
+        assert rule in text
+
+
+def test_the_story_window_can_reach_four_weeks(client: TestClient) -> None:
+    assert client.post("/api/trail/story", json={"msisdn_hash": DIGEST, "window_min": 40320}).status_code == 200
+    assert client.post("/api/trail/story", json={"msisdn_hash": DIGEST, "window_min": 40321}).status_code == 400

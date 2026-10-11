@@ -81,3 +81,17 @@ def test_replay_stops_cleanly_when_the_human_rejects_the_drone(client: TestClien
     names = [e["name"] for e in state["events"] if e["type"] == "call"]
     assert "drone_dispatch" not in names and "ran_tilt_cells" not in names
     assert "reject" in state["events"][-1]["text"].lower()
+    assert "reject" in state["events"][-1]["text"].lower()
+
+def test_replay_draws_the_incident_on_the_map(client: TestClient) -> None:
+    state = play(client, [True, True, True])
+    maps = [e for e in state["events"] if e["type"] == "map"]
+    by_step = {e["step"]: e["effects"] for e in maps}
+    calls = {e["step"]: e["name"] for e in state["events"] if e["type"] == "call"}
+    kinds = {calls[step] for step in by_step}
+    assert {"tower_get_status", "ontology_blast_radius", "flood_get_gauge", "drone_get_mission", "ran_tilt_cells"} <= kinds
+    blast = next(effects for step, effects in by_step.items() if calls[step] == "ontology_blast_radius")
+    assert any(e["kind"] == "ring" for e in blast) and any(e["kind"] == "pin" for e in blast)
+    down = next(effects for step, effects in by_step.items() if calls[step] == "tower_get_status")
+    assert down[0]["tone"] == "bad"
+    assert all(0 < e["lat"] < 10 and 95 < e["lng"] < 120 for effects in by_step.values() for e in effects)  # Malaysia

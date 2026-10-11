@@ -26,7 +26,13 @@ from starlette.routing import Route
 
 from menara_demo.app_types import Hub, HubFactory
 from menara_demo.runs import RunManager
-from menara_demo.trail_story import StoryError, build_facts, tell
+from menara_demo.trail_story import (
+    DEFAULT_WINDOW_MIN,
+    MAX_WINDOW_MIN,
+    StoryError,
+    build_facts,
+    tell,
+)
 
 STATIC = Path(__file__).parent / "static"
 MIN_T_MIN, MAX_T_MIN = -1440, 720  # the seeded period is -1440 to 480; a little past the end is allowed
@@ -133,11 +139,11 @@ def create_app(
     async def trail_story(request: Request) -> Response:
         body = await _json_body(request)
         digest = body.get("msisdn_hash") if isinstance(body, dict) else None
-        window = body.get("window_min", 1440) if isinstance(body, dict) else None
+        window = body.get("window_min", DEFAULT_WINDOW_MIN) if isinstance(body, dict) else None
         if not isinstance(digest, str) or not HASH_RE.match(digest):
             return _bad("msisdn_hash must be 16 hex characters")
-        if not isinstance(window, int) or not _int_in(window, 5, 2880):
-            return _bad("window_min must be an integer from 5 to 2880")
+        if not isinstance(window, int) or not _int_in(window, 5, MAX_WINDOW_MIN):
+            return _bad(f"window_min must be an integer from 5 to {MAX_WINDOW_MIN}")
         if llm is None:
             return _bad(NO_KEY, 503)
         try:
@@ -148,7 +154,20 @@ def create_app(
             story = await tell(llm, facts)
         except Exception as error:
             return _bad(f"The model could not write the story: {error}", 502)
-        return JSONResponse({"ok": True, "story": story, "facts": facts, "model": model_name})
+        return JSONResponse({"ok": True, "story": story, "facts": facts, "routines": facts["routines"], "model": model_name})
+
+    async def trail_routines(request: Request) -> Response:
+        digest = request.query_params.get("msisdn_hash")
+        raw = request.query_params.get("window_min", str(DEFAULT_WINDOW_MIN))
+        if digest is None or not HASH_RE.match(digest):
+            return _bad("msisdn_hash must be 16 hex characters")
+        if not raw.isdigit() or not _int_in(int(raw), 5, MAX_WINDOW_MIN):
+            return _bad(f"window_min must be an integer from 5 to {MAX_WINDOW_MIN}")
+        try:
+            facts = await build_facts(request.app.state.hub, digest, int(raw))
+        except StoryError as error:
+            return _bad(str(error), error.status)
+        return JSONResponse({"ok": True, "facts": facts, "routines": facts["routines"]})
 
     async def agent_status(request: Request) -> Response:
         return JSONResponse(
@@ -219,6 +238,7 @@ def create_app(
             Route("/api/call", call, methods=["POST"]),
             Route("/api/clock", clock_route, methods=["GET", "POST"]),
             Route("/api/trail/story", trail_story, methods=["POST"]),
+            Route("/api/trail/routines", trail_routines),
             Route("/api/agent/status", agent_status),
             Route("/api/agent/run", agent_run, methods=["POST"]),
             Route("/api/agent/events", agent_events),
