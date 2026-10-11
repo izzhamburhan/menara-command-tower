@@ -130,10 +130,13 @@ async def _safe(hub: Hub, name: str, arguments: dict[str, Any]) -> dict[str, Any
 async def heal_state(hub: Hub, clock_min: int, as_of: str) -> dict[str, Any]:
     """The loop's state at the scenario clock, read from the servers."""
     start = datetime.fromisoformat(as_of) - timedelta(minutes=clock_min)
-    incidents = (await _safe(hub, "ontology_list_incidents", {})).get("incidents") or []
+    now = datetime.fromisoformat(as_of)
+    incidents = [  # what has happened by the scenario clock: the clock may have been moved back
+        i for i in (await _safe(hub, "ontology_list_incidents", {})).get("incidents") or [] if datetime.fromisoformat(i["created_at"]) <= now
+    ]
     latest = max(incidents, key=lambda i: datetime.fromisoformat(i["created_at"]), default=None)
     failed = latest["enodeb_name"] if latest else FLOOD_ANCHOR
-    changes = (await _safe(hub, "ran_list_changes", {})).get("changes") or []
+    changes = [c for c in (await _safe(hub, "ran_list_changes", {})).get("changes") or [] if datetime.fromisoformat(c["applied_at"]) <= now]
     changes = sorted(changes, key=lambda c: (c.get("applied_at") or "", c["change_id"]))  # oldest first
     changed = [t for c in changes for t in c.get("towers") or []]
     status = await _safe(hub, "tower_get_status", {"enodeb_name": failed})

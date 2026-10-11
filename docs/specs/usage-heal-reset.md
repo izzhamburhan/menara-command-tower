@@ -119,3 +119,13 @@ Port 8113 for `usage-mcp`. Created with `uv run python scripts/new_mcp.py usage 
 ## 9. Rollout
 
 After merging, teammates stop the servers, run `uv run python -m menara_core.seed.cli` (new tables), and restart. `usage` appears in `.mcp.json`, so agents and the demo see 13 servers and 55 tools. From then on, "Reset demo" (or `menara-scenario reset-state --yes`) puts the data back without a re-seed.
+
+## 10. As built (changes found while implementing; the intent is unchanged)
+
+- **Usage hours.** `app_hour_factor` is the share of an app's daily users who are online with it in that hour (about 40% at the app's busiest hour), so `reach_pct` at 21:00 reads like "people online with it now", not the daily reach. Towns get a favourite app (a clearly leading app after the messengers) and a rising one.
+- **Heal state.** `ran_list_changes` has no efficacy and no minute fields, so the state derives `applied_min` and `reverted_min` from the ISO times and the scenario clock, and the chart shows the effect on the PRB series instead of an efficacy number. Changes and incidents dated after the scenario clock are not shown (the clock may have been moved back). `stages_done` is not in the state: the page rebuilds the tracker from the `heal` events, which it also gets back when it reloads. A tilt counts as a rollback when it was undone within 30 minutes of being applied; one undone hours later was restored when power returned.
+- **Heal events.** A human decision adds an `approve` event with step `null` ("Human approved" or "Human rejected"); the policy gate's answer is worded from its `decision` field.
+- **Replay.** It now waits 10 minutes after each tilt (`demo_advance_clock`) before judging it, so the failed first tilt and the good second tilt both show on the KPI series. The scripted step indices moved accordingly.
+- **Reset.** It also clears the autoincrement counters (`sqlite_sequence`), so ids restart from 1. A test plays the Replay, resets and plays it again and gets the same ids.
+- **Page.** The Self-heal chart zooms on the episode (from 90 minutes before the first tilt to 90 minutes after the last). `www.w3.org` is allowed in the host guard only because it is the SVG namespace name, never fetched.
+- **Design pass.** The Impeccable skill was not installed (the install was blocked in the session), so the design pass was done by hand against the same checklist (hierarchy, type scale, spacing tokens, color, motion, focus states, empty states, mobile) and checked with desktop and 390 px screenshots.

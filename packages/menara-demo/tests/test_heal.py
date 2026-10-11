@@ -171,3 +171,14 @@ def test_a_long_series_is_thinned_to_at_most_200_points() -> None:
     state = asyncio.run(heal_state(hub, clock_min=1440, as_of="2026-11-15T07:00:00+08:00"))
     assert 2 <= len(state["series"]["KKRI-0143"]) <= 200
     assert state["series"]["KKRI-0143"][-1]["t_min"] == 2995  # the newest point is kept
+
+def test_changes_and_incidents_after_the_clock_are_not_shown_yet() -> None:
+    hub = FakeHub(
+        {"KKRI-0143": [91.0] * 4},
+        changes=[change("CHG-0001", "ACTIVE", "2026-11-14T07:10:00+08:00", None, ["KKRI-0143"])],
+        incidents=[{"incident_id": "INC-0001", "enodeb_name": "AAAA-0001", "status": "OPEN", "created_at": "2026-11-14T07:09:00+08:00"}],
+    )
+    early = asyncio.run(heal_state(hub, clock_min=5, as_of="2026-11-14T07:05:00+08:00"))  # the clock was moved back
+    assert early["changes"] == [] and early["incident"] is None and early["failed_tower"] == FLOOD_ANCHOR
+    later = asyncio.run(heal_state(hub, clock_min=15, as_of="2026-11-14T07:15:00+08:00"))
+    assert [c["change_id"] for c in later["changes"]] == ["CHG-0001"] and later["incident"]["incident_id"] == "INC-0001"

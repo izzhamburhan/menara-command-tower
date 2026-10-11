@@ -1,6 +1,6 @@
 # Menara Command Center (MCP side)
 
-A Palantir-style **network command center for Malaysia**, built for the TM AI Elevate hackathon. This repo holds the **MCP side**: twelve small, independent MCP servers that give an AI agent (and later a map UI) eyes and hands over a mobile network: towers, subscribers, tickets, weather, power, floods, critical sites, a digital twin, a policy engine, a drone and a RAN control sandbox.
+A Palantir-style **network command center for Malaysia**, built for the TM AI Elevate hackathon. This repo holds the **MCP side**: thirteen small, independent MCP servers that give an AI agent (and later a map UI) eyes and hands over a mobile network: towers, subscribers, tickets, weather, power, floods, critical sites, a digital twin, a policy engine, a drone, a RAN control sandbox, and what people use on the internet.
 
 **All data is synthetic.** Nothing here is TM's real data, systems, prices or coverage, and no real subscriber is involved. Owner: Izzham Burhan, TMRND.
 
@@ -42,16 +42,15 @@ Prefer `python -m ...` over console scripts such as `uv run menara-seed`: some W
 uv run python -m menara_agent "Ticket TK-88213 just arrived. Find the cause and blast radius, and record an Incident."
 ```
 
-`menara_agent` is a small **test driver**, not the team's real agent. It lets a model call all twelve servers so you can watch the flow. When policy says a human must decide, it stops and asks you in the terminal (`Approve? [y/N]`). See [`packages/menara-agent/README.md`](packages/menara-agent/README.md).
+`menara_agent` is a small **test driver**, not the team's real agent. It lets a model call all thirteen servers so you can watch the flow. When policy says a human must decide, it stops and asks you in the terminal (`Approve? [y/N]`). See [`packages/menara-agent/README.md`](packages/menara-agent/README.md).
 
-**See it in a browser.** `uv run python -m menara_demo` starts the servers and a simple demo page at http://127.0.0.1:8200: a map of Malaysia where you click to circle a place, see its towers and subscribers, and open a subscriber's trail, a Story tab that runs the incident live with DeepSeek (or a keyless replay) with Approve/Reject buttons, an Explain-this-trail button, and a console to run any tool and read the raw output. It is a demo aid, not the real UI. See [`packages/menara-demo/README.md`](packages/menara-demo/README.md).
-**See it in a browser.** `uv run python -m menara_demo` starts the servers and a simple demo page at http://127.0.0.1:8200: a map of Malaysia where you click to circle a place, see its towers and subscribers, and open a subscriber's trail, a dark command-center look, a Story tab that runs the incident live with DeepSeek (or a keyless replay) while the map follows it, with Approve/Reject buttons, a replayable subscriber trail with a weekday and weekend routine, an Explain-this-trail button, and a console to run any tool and read the raw output. It is a demo aid, not the real UI. See [`packages/menara-demo/README.md`](packages/menara-demo/README.md).
+**See it in a browser.** `uv run python -m menara_demo` starts the servers and a simple demo page at http://127.0.0.1:8200: a map of Malaysia where you click to circle a place, see its towers and subscribers, and open a subscriber's trail, a dark command-center look, a Story tab that runs the incident live with DeepSeek (or a keyless replay) while the map follows it, with Approve/Reject buttons, a replayable subscriber trail with a weekday and weekend routine, an Explain-this-trail button, a Self-heal tab that shows the loop stage by stage with the load falling on a chart, a "What people use here" card for the circle, a Reset button that puts the demo back to a clean state, and a console to run any tool and read the raw output. It is a demo aid, not the real UI. See [`packages/menara-demo/README.md`](packages/menara-demo/README.md).
 
-**Or use the servers from your own MCP client** (Claude Code, Codex, an inspector): [`.mcp.json`](.mcp.json) already registers all twelve over stdio. For a browser-style tool such as `npx @modelcontextprotocol/inspector`, run a server over HTTP with `scripts/run_mcp.py` and connect to `http://127.0.0.1:<port>/mcp`.
+**Or use the servers from your own MCP client** (Claude Code, Codex, an inspector): [`.mcp.json`](.mcp.json) already registers all thirteen over stdio. For a browser-style tool such as `npx @modelcontextprotocol/inspector`, run a server over HTTP with `scripts/run_mcp.py` and connect to `http://127.0.0.1:<port>/mcp`.
 
-## The twelve MCP servers
+## The thirteen MCP servers
 
-Port is for streamable HTTP; stdio (the default) needs none. 56 tools in total. Each server's full contract (arguments, response shapes, errors) is in `servers/<name>-mcp/README.md`.
+Port is for streamable HTTP; stdio (the default) needs none. 59 tools in total. Each server's full contract (arguments, response shapes, errors) is in `servers/<name>-mcp/README.md`.
 
 | Server | Port | What it is for | Tools | Writes |
 | --- | --- | --- | --- | --- |
@@ -66,8 +65,8 @@ Port is for streamable HTTP; stdio (the default) needs none. 56 tools in total. 
 | `policy` | 8109 | The gate for real-world actions: allow, ask a human, or deny; audit log; kill switch | `policy_check_action`, `policy_get_approval`, `policy_list_approvals`, `policy_approve`\*, `policy_reject`\*, `policy_record_outcome`, `policy_get_status`, `policy_set_kill_switch`\*, `policy_update_setting`\*, `policy_get_audit` | settings, approvals, audit log |
 | `drone` | 8110 | A simulated drone that inspects a tower | `drone_list_drones`, `drone_dispatch`, `drone_get_mission`, `drone_list_missions` | missions |
 | `ran` | 8111 | A sandboxed RAN control: tilt cells, reset, roll back | `ran_get_config`, `ran_tilt_cells`, `ran_reset_cell`, `ran_revert_change`, `ran_get_change`, `ran_list_changes` | changes and their KPI effects |
-| `sites` | 8112 | Critical sites (hospitals, clinics, police, schools, enterprise) and their tower | `sites_get_site`, `sites_list_in_bbox`, `sites_for_tower` | nothing |
 | `sites` | 8112 | Critical sites (hospitals, clinics, police, schools, enterprise) and malls, and their tower | `sites_get_site`, `sites_list_in_bbox`, `sites_for_tower` | nothing |
+| `usage` | 8113 | What people use on the internet in a circle or on a tower (top apps, categories, busiest hour); synthetic estimates, aggregated, never per person | `usage_top_apps_in_area`, `usage_get_tower_apps`, `usage_app_trend` | nothing |
 
 \* Human-only: needs `MENARA_APPROVER_KEY`, which the command-center UI holds and the agent must never have.
 
@@ -99,6 +98,7 @@ uv run python -m menara_core.scenario_cli show        # where are we?
 uv run python -m menara_core.scenario_cli set 12      # jump to minute 12
 uv run python -m menara_core.scenario_cli advance 60  # move forward an hour
 uv run python -m menara_core.scenario_cli reset       # back to T0
+uv run python -m menara_core.scenario_cli reset-state --yes   # also remove what agents and people created (incidents, approvals, tilts, missions, notes, audit log)
 ```
 
 ## Safety, privacy and honesty
@@ -130,7 +130,7 @@ data/scenario/           scripted scenarios (kuala_krai.yaml); data/menara.db is
 tests/golden_trace/      the whole flood story, walked across separate server processes
 scripts/                 run_mcp.py, new_mcp.py, worktree and skill tooling
 .claude/ and .codex/     process skills for Claude Code and Codex (kept identical by a CI check)
-.mcp.json                registers the twelve servers for MCP clients
+.mcp.json                registers the thirteen servers for MCP clients
 docs/                    specs and test plans for the larger changes
 CLAUDE.md, AGENTS.md     the handbook for AI coding agents and people (same rules, two audiences)
 playbook.md              the working process: gates, git rules, definition of done

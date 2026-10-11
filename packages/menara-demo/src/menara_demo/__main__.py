@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="menara-demo", description=__doc__)
     parser.add_argument("--host", default="127.0.0.1", help="default 127.0.0.1; the demo has no login, keep it local")
     parser.add_argument("--port", type=int, default=8200)
-    parser.add_argument("--servers", default=None, help="comma-separated subset of servers (default: all twelve)")
+    parser.add_argument("--servers", default=None, help="comma-separated subset of servers (default: all thirteen)")
     args = parser.parse_args(argv)
     only = {name.strip() for name in args.servers.split(",")} if args.servers else None
 
