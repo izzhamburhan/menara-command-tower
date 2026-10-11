@@ -164,6 +164,17 @@
         "-m",
         "care_mcp"
       ]
+    },
+    "enterprise": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "enterprise-mcp",
+        "python",
+        "-m",
+        "enterprise_mcp"
+      ]
     }
   }
 }

@@ -458,4 +458,31 @@ CREATE TABLE care_notice (
     approved_by           TEXT NOT NULL,
     tickets_deflected_est INTEGER NOT NULL
 );
+
+-- base (seed only): fictional business customers with an SLA, served by enterprise-mcp. Invented numbers.
+CREATE TABLE enterprise_account (
+    account_id           TEXT PRIMARY KEY,
+    name                 TEXT NOT NULL UNIQUE,
+    sector               TEXT NOT NULL,
+    enodeb_name          TEXT NOT NULL REFERENCES tower (enodeb_name),
+    plan                 TEXT NOT NULL,
+    monthly_value_rm     REAL NOT NULL,
+    sla_availability_pct REAL NOT NULL,
+    penalty_rm_per_hour  REAL NOT NULL
+);
+CREATE INDEX idx_enterprise_tower ON enterprise_account (enodeb_name);
+
+-- owned by enterprise-mcp: service credits that were approved and issued
+CREATE TABLE sla_credit (
+    seq         INTEGER PRIMARY KEY AUTOINCREMENT,
+    credit_id   TEXT UNIQUE,
+    account_id  TEXT NOT NULL REFERENCES enterprise_account (account_id),
+    from_min    INTEGER NOT NULL,
+    hours       REAL NOT NULL,
+    amount_rm   REAL NOT NULL,
+    issued_min  INTEGER NOT NULL,
+    issued_at   TEXT NOT NULL,
+    approved_by TEXT NOT NULL,
+    reason      TEXT NOT NULL
+);
 """
