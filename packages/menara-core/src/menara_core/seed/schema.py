@@ -485,4 +485,18 @@ CREATE TABLE sla_credit (
     approved_by TEXT NOT NULL,
     reason      TEXT NOT NULL
 );
+
+-- base (seed only): fictional crowd events, served by events-mcp. Invented names and crowd sizes.
+CREATE TABLE crowd_event (
+    event_id   TEXT PRIMARY KEY,
+    name       TEXT NOT NULL UNIQUE,
+    kind       TEXT NOT NULL CHECK (kind IN ('FESTIVAL', 'MATCH', 'CONCERT', 'EXODUS')),
+    town       TEXT NOT NULL,
+    lat        REAL NOT NULL,
+    lng        REAL NOT NULL,
+    radius_km  REAL NOT NULL,
+    start_min  INTEGER NOT NULL,
+    end_min    INTEGER NOT NULL,
+    attendance INTEGER NOT NULL
+);
 """

@@ -175,6 +175,17 @@
         "-m",
         "enterprise_mcp"
       ]
+    },
+    "events": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "events-mcp",
+        "python",
+        "-m",
+        "events_mcp"
+      ]
     }
   }
 }
