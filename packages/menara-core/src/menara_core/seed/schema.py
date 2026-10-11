@@ -523,4 +523,39 @@ CREATE TABLE qod_booking (
     approved_by TEXT NOT NULL,
     reason      TEXT NOT NULL
 );
+
+-- base (seed only): fictional field technicians and spare parts, served by field-mcp. Invented names and stock.
+CREATE TABLE technician (
+    tech_id          TEXT PRIMARY KEY,
+    name             TEXT NOT NULL UNIQUE,
+    depot_id         TEXT NOT NULL,
+    lat              REAL NOT NULL,
+    lng              REAL NOT NULL,
+    skills           TEXT NOT NULL,
+    shift_start_hour INTEGER NOT NULL,
+    shift_end_hour   INTEGER NOT NULL
+);
+
+CREATE TABLE spare_part (
+    depot_id TEXT NOT NULL,
+    part     TEXT NOT NULL CHECK (part IN ('GENERATOR', 'RECTIFIER', 'BATTERY', 'ANTENNA')),
+    qty      INTEGER NOT NULL,
+    PRIMARY KEY (depot_id, part)
+);
+
+-- owned by field-mcp: work orders that were approved and dispatched (status is derived from the scenario clock)
+CREATE TABLE field_job (
+    seq            INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id         TEXT UNIQUE,
+    tech_id        TEXT NOT NULL REFERENCES technician (tech_id),
+    enodeb_name    TEXT NOT NULL REFERENCES tower (enodeb_name),
+    task           TEXT NOT NULL,
+    skill          TEXT NOT NULL,
+    dispatched_min INTEGER NOT NULL,
+    dispatched_at  TEXT NOT NULL,
+    eta_min        INTEGER NOT NULL,
+    access         TEXT NOT NULL CHECK (access IN ('ROAD', 'BOAT')),
+    approved_by    TEXT NOT NULL,
+    reason         TEXT NOT NULL
+);
 """

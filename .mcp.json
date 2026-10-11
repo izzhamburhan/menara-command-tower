@@ -197,6 +197,17 @@
         "-m",
         "exposure_mcp"
       ]
+    },
+    "field": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--package",
+        "field-mcp",
+        "python",
+        "-m",
+        "field_mcp"
+      ]
     }
   }
 }

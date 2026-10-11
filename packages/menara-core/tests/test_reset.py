@@ -79,6 +79,10 @@ def dirty(db_file: Path) -> None:
             "VALUES ('BKG-0001', 'BROADCAST_UPLINK', 'KKRI-0143', 'Fictional Crew', 12, 72, 450, 'human', 'r')"
         )
         conn.execute(
+            "INSERT INTO field_job (job_id, tech_id, enodeb_name, task, skill, dispatched_min, dispatched_at, eta_min, access, approved_by, reason) "
+            "VALUES ('JOB-0001', 'TECH-001', 'KKRI-0142', 't', 'POWER', 12, ?, 90, 'BOAT', 'human', 'r')", (AT,)
+        )
+        conn.execute(
             "INSERT INTO energy_action (action_id, enodeb_name, kind, from_min, to_min, kwh_saved, co2_kg_saved, approved_by, reason) "
             "VALUES ('ENA-0001', 'KKRI-0143', 'SLEEP', 1200, 1560, 3.0, 1.75, 'human', 'r')"
         )
@@ -127,7 +131,7 @@ def test_reset_clears_every_runtime_table_and_reports_the_counts(played: Path, s
 def test_the_runtime_tables_are_exactly_the_ones_servers_write(played: Path) -> None:
     assert set(RUNTIME_TABLES) == {
         "incident", "incident_ticket", "twin_simulation", "ran_change", "ran_change_item", "ran_kpi_effect",
-        "drone_mission", "approval", "audit_log", "ticket_note", "ticket_resolution", "energy_action", "care_notice", "sla_credit", "qod_booking",
+        "drone_mission", "approval", "audit_log", "ticket_note", "ticket_resolution", "energy_action", "care_notice", "sla_credit", "qod_booking", "field_job",
     }
 
 

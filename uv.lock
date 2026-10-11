@@ -15,6 +15,7 @@ members = [
     "enterprise-mcp",
     "events-mcp",
     "exposure-mcp",
+    "field-mcp",
     "flood-mcp",
     "grid-mcp",
     "menara",
@@ -379,6 +380,21 @@ requires-dist = [
 name = "exposure-mcp"
 version = "0.1.0"
 source = { editable = "servers/exposure-mcp" }
+dependencies = [
+    { name = "mcp", extra = ["cli"] },
+    { name = "menara-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mcp", extras = ["cli"], specifier = ">=1.9,<2" },
+    { name = "menara-core", editable = "packages/menara-core" },
+]
+
+[[package]]
+name = "field-mcp"
+version = "0.1.0"
+source = { editable = "servers/field-mcp" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
     { name = "menara-core" },
@@ -780,6 +796,7 @@ dev = [
     { name = "enterprise-mcp" },
     { name = "events-mcp" },
     { name = "exposure-mcp" },
+    { name = "field-mcp" },
     { name = "flood-mcp" },
     { name = "grid-mcp" },
     { name = "menara-agent" },
@@ -811,6 +828,7 @@ dev = [
     { name = "enterprise-mcp", editable = "servers/enterprise-mcp" },
     { name = "events-mcp", editable = "servers/events-mcp" },
     { name = "exposure-mcp", editable = "servers/exposure-mcp" },
+    { name = "field-mcp", editable = "servers/field-mcp" },
     { name = "flood-mcp", editable = "servers/flood-mcp" },
     { name = "grid-mcp", editable = "servers/grid-mcp" },
     { name = "menara-agent", editable = "packages/menara-agent" },
