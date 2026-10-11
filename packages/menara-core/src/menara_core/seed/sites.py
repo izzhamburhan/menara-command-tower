@@ -10,12 +10,14 @@ from menara_core.scenario import Scenario
 from menara_core.seed.towers import TOWNS, TowerRow
 
 EMERGENCY_KINDS = {"HOSPITAL", "CLINIC", "POLICE", "FIRE"}
-PRIORITY = {"HOSPITAL": 1, "CLINIC": 1, "POLICE": 1, "FIRE": 1, "ENTERPRISE": 2, "SCHOOL": 3}
+PRIORITY = {"HOSPITAL": 1, "CLINIC": 1, "POLICE": 1, "FIRE": 1, "ENTERPRISE": 2, "SCHOOL": 3, "MALL": 4}
 # (kind, count, label) per town. Names are fictional.
 PER_TOWN = [("HOSPITAL", 1, "Hospital"), ("CLINIC", 2, "Clinic"), ("POLICE", 1, "Police Station"),
             ("SCHOOL", 3, "School"), ("ENTERPRISE", 1, "Enterprise (SLA)")]
 URBAN_CODES = {"KULP", "SHAH", "GTWN", "JBHR", "KKIN", "KCHG", "IPOH"}
 SUBSCRIBERS_RANGE = (300, 1800)
+MALL_SPREAD_DEG = 0.01
+MALL_INDEX = 90  # ids stay CS-<area>-<nn>; the generated sites of a town use 01 to 09
 
 
 def _insert(
@@ -55,3 +57,18 @@ def build_sites(conn: sqlite3.Connection, rng: random.Random, scenario: Scenario
     for site in scenario.sites:
         assert site.serving in by_name, f"scenario site {site.id} names unknown tower {site.serving}"
         _insert(conn, site.id, site.name, site.kind, scenario.cluster.state, site.lat, site.lng, site.serving)
+
+
+def build_malls(conn: sqlite3.Connection, seed: int, scenario: Scenario, towers: list[TowerRow]) -> None:
+    """One synthetic mall per town, from its own random stream so no other table's draws change."""
+    rng = random.Random(f"{seed}:malls")
+    cluster_names = {t.enodeb for t in scenario.cluster.towers}
+    for code, town, state, _lat, _lng, _w, _r in TOWNS:
+        local = [t for t in towers if t.town == town and t.enodeb_name not in cluster_names]
+        if not local:
+            continue
+        anchor = rng.choice(local)
+        lat = anchor.lat + rng.uniform(-MALL_SPREAD_DEG, MALL_SPREAD_DEG)
+        lng = anchor.lng + rng.uniform(-MALL_SPREAD_DEG, MALL_SPREAD_DEG)
+        serving = min(local, key=lambda t: haversine_km(lat, lng, t.lat, t.lng))
+        _insert(conn, f"CS-{code}-{MALL_INDEX}", f"{town} Mall 1 (synthetic)", "MALL", state, round(lat, 5), round(lng, 5), serving.enodeb_name)

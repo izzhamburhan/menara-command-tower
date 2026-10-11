@@ -66,10 +66,10 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
         return run(lambda conn: tools.list_on_tower(conn, enodeb_name, limit))
 
     @mcp.tool(
-        description="The cells one subscriber has been on over the last window_min minutes (5-2880), oldest first, "
-        "with arrival and leave times. Cell level only. Get the msisdn_hash from a ticket or a subscriber list."
-        "with arrival and leave times. window_start says when the window begins, so the first segment may have arrived "
-        "earlier than that. Cell level only. Get the msisdn_hash from a ticket or a subscriber list."
+        description="The cells one subscriber has been on over the last window_min minutes (5-40320, four weeks; "
+        "default 1440), oldest first, with arrival and leave times. window_start says when the window begins, so the "
+        "first segment may have arrived earlier than that. A long window shows weekly routines (weekday commute, "
+        "weekend trips). Cell level only. Get the msisdn_hash from a ticket or a subscriber list."
     )
     def user_get_trail(msisdn_hash: str, window_min: int = 1440) -> dict[str, Any]:
         return run(lambda conn: tools.get_trail(conn, msisdn_hash, window_min))

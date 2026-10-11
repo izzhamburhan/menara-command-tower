@@ -23,6 +23,7 @@ Every tool returns `{synthetic: true, as_of, data, evidence[], warnings[]}`.
 | `user_list_in_area` | `lat, lng, radius_km` (0.1-100)`, limit=200` (1-500) | Subscribers whose serving tower is in the circle now: `towers[]` (`subscribers_sampled`, `subscribers_est`), `subscribers[]` (hash, cell, `attached`, `latest_label`, `cell_changes_24h`), `subscribers_total`, `subscribers_est_total`, `returned`, `truncated`, `withheld` |
 | `user_list_on_tower` | `enodeb_name, limit=200` | The same shape for one tower |
 | `user_get_trail` | `msisdn_hash, window_min=1440` (5-2880) | `window_start`, `segments[]` oldest first (`serving_cell`, `enodeb_name`, cell-level `cell_lat`/`cell_lng`, `arrived_at`, `left_at`, `duration_min` inside the window, `current`), `moves`, `distinct_towers` |
+| `user_get_trail` | `msisdn_hash, window_min=1440` (5-40320, four weeks) | `window_start`, `segments[]` oldest first (`serving_cell`, `enodeb_name`, cell-level `cell_lat`/`cell_lng`, `arrived_at`, `left_at`, `duration_min` inside the window, `current`), `moves`, `distinct_towers` |
 
 Get the hash from a ticket's `customer_ref` (ticket-mcp) or from a subscriber list.
 

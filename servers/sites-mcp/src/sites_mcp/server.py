@@ -39,7 +39,7 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
 
     @mcp.tool(
         description="Critical sites inside a lat/lng bounding box, highest priority first. "
-        "kind filter: HOSPITAL, CLINIC, POLICE, FIRE, SCHOOL or ENTERPRISE."
+        "kind filter: HOSPITAL, CLINIC, POLICE, FIRE, SCHOOL, ENTERPRISE or MALL."
     )
     def sites_list_in_bbox(
         min_lat: float,

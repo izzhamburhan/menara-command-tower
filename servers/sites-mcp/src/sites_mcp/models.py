@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-SiteKind = Literal["HOSPITAL", "CLINIC", "POLICE", "FIRE", "SCHOOL", "ENTERPRISE"]
+SiteKind = Literal["HOSPITAL", "CLINIC", "POLICE", "FIRE", "SCHOOL", "ENTERPRISE", "MALL"]
 
 
 class Site(BaseModel):

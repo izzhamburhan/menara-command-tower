@@ -48,6 +48,8 @@ def cluster_towers() -> set[str]:
 def test_old_tables_are_unchanged_by_movement(conn: sqlite3.Connection) -> None:
     for table, expected in BASELINE.items():
         rows = [tuple(r) for r in conn.execute(f"SELECT * FROM {table} ORDER BY 1,2").fetchall()]
+        where = " WHERE kind != 'MALL'" if table == "critical_site" else ""  # malls are new rows, not changed ones
+        rows = [tuple(r) for r in conn.execute(f"SELECT * FROM {table}{where} ORDER BY 1,2").fetchall()]
         assert (len(rows), hashlib.sha256(repr(rows).encode()).hexdigest()[:12]) == expected, table
 
 
@@ -66,7 +68,7 @@ def test_every_subscriber_is_where_the_subscriber_table_says_at_minute_0(conn: s
 
 def test_visits_start_at_the_beginning_and_stay_in_the_seeded_period(conn: sqlite3.Connection) -> None:
     firsts = conn.execute("SELECT MIN(start_min) AS first FROM subscriber_cell_visit GROUP BY msisdn_hash").fetchall()
-    assert {r["first"] for r in firsts} == {-1440}
+    assert {r["first"] for r in firsts} == {-40320}  # four weeks before T0
     assert conn.execute("SELECT MAX(start_min) FROM subscriber_cell_visit").fetchone()[0] <= 480
 
 

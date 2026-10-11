@@ -37,7 +37,7 @@ def test_a_stationary_subscriber_has_one_current_segment(conn: sqlite3.Connectio
     assert len(data.segments) == 1 and data.moves == 0 and data.distinct_towers == 1
     seg = data.segments[0]
     assert seg.enodeb_name == "KKRI-0142" and seg.current is True and seg.left_at is None
-    assert seg.arrived_at.startswith("2026-11-13T07:00") and seg.duration_min == 1440  # minutes inside the window
+    assert seg.arrived_at.startswith("2026-10-17T07:00") and seg.duration_min == 1440  # arrived four weeks ago; minutes inside the window
     assert data.location_precision == "cell" and env.evidence[0].tool == "user_get_trail"
 
 
@@ -46,6 +46,7 @@ def test_a_commuter_has_home_transit_and_work_segments_with_times(conn: sqlite3.
     visits = _visits(conn, digest)
     set_clock(480)
     data = tools.get_trail(conn, digest, window_min=2880).data
+    data = tools.get_trail(conn, digest, window_min=tools.MAX_TRAIL_WINDOW_MIN).data
     assert [s.enodeb_name for s in data.segments] == [t for _, t in visits]
     assert data.segments[-1].current is True and data.segments[-1].left_at is None
     for earlier, later in zip(data.segments, data.segments[1:], strict=False):
@@ -59,6 +60,7 @@ def test_the_trail_never_extends_past_the_clock(conn: sqlite3.Connection, set_cl
     first_move_today = next(start for start, _ in visits if start >= 0)
     set_clock(first_move_today - 1)
     data = tools.get_trail(conn, digest, window_min=2880).data
+    data = tools.get_trail(conn, digest, window_min=tools.MAX_TRAIL_WINDOW_MIN).data
     assert data.segments[-1].current is True and data.segments[-1].enodeb_name != visits[-1][1]
     assert all(s.arrived_at <= data.segments[-1].arrived_at for s in data.segments)
 
@@ -68,6 +70,7 @@ def test_window_selects_overlapping_segments_and_clips_durations(conn: sqlite3.C
     set_clock(480)
     short = tools.get_trail(conn, digest, window_min=60).data
     full = tools.get_trail(conn, digest, window_min=2880).data
+    full = tools.get_trail(conn, digest, window_min=tools.MAX_TRAIL_WINDOW_MIN).data
     assert 1 <= len(short.segments) < len(full.segments)
     assert short.segments[-1].enodeb_name == full.segments[-1].enodeb_name
     assert sum(s.duration_min for s in short.segments) <= 60
@@ -91,14 +94,14 @@ def test_serving_cell_follows_the_trail_and_matches_the_table_at_minute_0(
 
 
 def test_trail_validation_and_unknown_subscriber(conn: sqlite3.Connection) -> None:
-    for bad in (4, 2881):
+    for bad in (4, tools.MAX_TRAIL_WINDOW_MIN + 1):
         with pytest.raises(InvalidInputError):
             tools.get_trail(conn, _stayer(conn), window_min=bad)
     with pytest.raises(InvalidInputError):
         tools.get_trail(conn, "not-a-hash")
     with pytest.raises(NotFoundError):
         tools.get_trail(conn, "0" * 16)
-        tools.get_trail(conn, "0" * 16)
+
 
 def test_the_trail_says_when_its_window_begins(conn: sqlite3.Connection, set_clock: Callable[[int], None]) -> None:
     set_clock(12)

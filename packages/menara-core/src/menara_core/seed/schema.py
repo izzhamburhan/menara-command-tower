@@ -226,7 +226,7 @@ CREATE TABLE flood_extent (
 CREATE TABLE critical_site (
     critical_site_id  TEXT PRIMARY KEY,
     name              TEXT NOT NULL,
-    kind              TEXT NOT NULL CHECK (kind IN ('HOSPITAL', 'CLINIC', 'POLICE', 'FIRE', 'SCHOOL', 'ENTERPRISE')),
+    kind              TEXT NOT NULL CHECK (kind IN ('HOSPITAL', 'CLINIC', 'POLICE', 'FIRE', 'SCHOOL', 'ENTERPRISE', 'MALL')),
     state             TEXT NOT NULL,
     lat               REAL NOT NULL,
     lng               REAL NOT NULL,
