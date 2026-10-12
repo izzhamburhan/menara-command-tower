@@ -85,6 +85,9 @@ class NttSummary(BaseModel):
     ctt_count: int
 
 
+MCMC_NOTE = "Simulated for the demo: the thresholds are invented and nothing is sent to anyone."
+
+
 class McmcEligibility(BaseModel):
     can_send: bool
     can_send_display_message: str
@@ -93,6 +96,8 @@ class McmcEligibility(BaseModel):
     is_mcmc_comprehensive_required: bool
     comprehensive_report_aging_days: int | None
     reasons: list[str]
+    simulated: bool = True
+    note: str = MCMC_NOTE
 
 
 class NttDetail(BaseModel):

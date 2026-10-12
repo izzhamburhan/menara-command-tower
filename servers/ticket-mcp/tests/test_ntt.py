@@ -68,8 +68,25 @@ def test_create_ntt_and_deduplicate_active_ne(conn: sqlite3.Connection) -> None:
         summary="Another complaint for same tower",
     )
     assert dup.data.ntt_id == "NTT-0001"
-    assert len(dup.warnings) == 1
     assert "reused" in dup.warnings[0]
+    assert any("fault_type FLOOD was ignored" in w for w in dup.warnings)  # said, not silently dropped
+    assert any("severity MAJOR was ignored" in w for w in dup.warnings)
+    assert dup.data.fault_type == "POWER" and dup.data.severity == "CRITICAL"
+
+
+def test_a_higher_severity_on_a_duplicate_raises_the_existing_ntt(conn: sqlite3.Connection) -> None:
+    first = create_ntt(conn, "KKRI-0142", "POWER", "MINOR", "Flicker on the mains")
+    again = create_ntt(conn, "KKRI-0142", "POWER", "CRITICAL", "Mains now fully down")
+    assert again.data.ntt_id == first.data.ntt_id and again.data.severity == "CRITICAL"
+    assert any("Severity raised from MINOR to CRITICAL" in w for w in again.warnings)
+    assert any("Severity raised" in n.text for n in again.data.notes)
+
+
+def test_the_network_element_must_be_a_real_tower_or_feeder(conn: sqlite3.Connection) -> None:
+    with pytest.raises(NotFoundError):
+        create_ntt(conn, "NOPE-9999", "POWER", "CRITICAL", "A made-up element")
+    assert create_ntt(conn, "FDR-KKRI-01", "POWER", "MAJOR", "Feeder trip").data.network_element_id == "FDR-KKRI-01"
+    assert list_ntts(conn).data.total == 1  # the refused one left nothing behind
 
 
 def test_get_ntt_and_list_ntts(conn: sqlite3.Connection) -> None:
@@ -196,7 +213,8 @@ def test_mcmc_eligibility_and_auto_send_on_resolve(
     set_clock(150)
     check2 = check_mcmc(conn, ntt_id)
     assert check2.data.can_send is True
-    assert check2.data.can_send_display_message == "EMAILED TO MCMC"
+    assert check2.data.can_send_display_message == "ELIGIBLE (SIMULATED, NOTHING SENT)"
+    assert check2.data.simulated is True and "nothing is sent" in check2.data.note.lower()
 
     # 3. Resolve NTT -> Auto-dispatches MCMC closure notice and flags comprehensive report due in 3 days
     res = resolve_ntt(conn, ntt_id=ntt_id, resolution_note="Power restored to tower")
@@ -209,5 +227,4 @@ def test_mcmc_eligibility_and_auto_send_on_resolve(
     detail = get_ntt(conn, ntt_id)
     assert detail.data.mcmc_closure_sent is True
     assert detail.data.mcmc_comprehensive_required is True
-    assert any("MCMC Closure" in n.text for n in detail.data.notes)
-
+    assert any("Simulated MCMC closure" in n.text and "nothing was sent" in n.text for n in detail.data.notes)

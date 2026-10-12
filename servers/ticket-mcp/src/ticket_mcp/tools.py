@@ -39,8 +39,10 @@ VALID_FAULT_TYPES = frozenset({"POWER", "FLOOD", "FIBER", "RAN", "HARDWARE", "OT
 VALID_SEVERITIES = frozenset({"CRITICAL", "MAJOR", "MINOR"})
 VALID_NTT_STATUSES = frozenset({"IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"})
 
-MCMC_OUTAGE_THRESHOLD_MIN = 120  # Regulatory threshold: 2 hours
+# Invented demo rules for a simulated regulator notice (nothing is sent; not a statement of any real regulation).
+MCMC_OUTAGE_THRESHOLD_MIN = 120
 MCMC_COMPREHENSIVE_REPORT_DAYS = 3
+SEVERITY_RANK = {"MINOR": 0, "MAJOR": 1, "CRITICAL": 2}
 MCMC_SERVICE_IMPACTING_SEVERITIES = frozenset({"CRITICAL", "MAJOR"})
 MCMC_SERVICE_IMPACTING_FAULTS = frozenset({"POWER", "FLOOD", "FIBER", "RAN", "HARDWARE"})
 
@@ -291,6 +293,16 @@ def _build_ntt_detail(conn: sqlite3.Connection, row: sqlite3.Row) -> NttDetail:
     )
 
 
+def _check_element(conn: sqlite3.Connection, ne_id: str) -> None:
+    """The element must be a tower (enodeb_name) or a power feeder (feeder_id). Read-only look at those base tables."""
+    name = ne_id.removeprefix("SITE-")
+    if conn.execute("SELECT 1 FROM tower WHERE enodeb_name = ?", (name,)).fetchone():
+        return
+    if conn.execute("SELECT 1 FROM grid_feeder WHERE feeder_id = ?", (ne_id,)).fetchone():
+        return
+    raise NotFoundError(f"Network element {ne_id} not found (use a tower enodeb_name or a feeder id)")
+
+
 def create_ntt(
     conn: sqlite3.Connection,
     network_element_id: str,
@@ -312,6 +324,7 @@ def create_ntt(
     if len(summ) < 5 or len(summ) > MAX_NTT_SUMMARY_CHARS:
         raise InvalidInputError(f"summary must be 5-{MAX_NTT_SUMMARY_CHARS} characters")
 
+    _check_element(conn, ne_id)
     ctts_to_link: list[str] = []
     if ctt_ticket_ids:
         for tid in ctt_ticket_ids:
@@ -329,13 +342,24 @@ def create_ntt(
     if existing is not None:
         ntt_id = existing["ntt_id"]
         warnings.append(f"Existing active NTT {ntt_id} for {ne_id} was reused.")
+        if ft != existing["fault_type"]:
+            warnings.append(f"fault_type {ft} was ignored: the existing NTT says {existing['fault_type']}.")
+        if SEVERITY_RANK[sev] > SEVERITY_RANK[existing["severity"]]:
+            conn.execute("UPDATE ntt SET severity = ? WHERE ntt_id = ?", (sev, ntt_id))
+            conn.execute(
+                "INSERT INTO ntt_note (ntt_id, at, author, text) VALUES (?, ?, ?, ?)",
+                (ntt_id, stamp, "system", f"Severity raised from {existing['severity']} to {sev}: {summ}"),
+            )
+            warnings.append(f"Severity raised from {existing['severity']} to {sev}.")
+        elif sev != existing["severity"]:
+            warnings.append(f"severity {sev} was ignored: the existing NTT is {existing['severity']}.")
         for tid in ctts_to_link:
             conn.execute(
                 "INSERT OR IGNORE INTO ntt_ctt_link VALUES (?, ?, ?, ?)",
                 (ntt_id, tid, now, stamp),
             )
         conn.commit()
-        detail = _build_ntt_detail(conn, existing)
+        detail = _build_ntt_detail(conn, _get_ntt_row(conn, ntt_id))
         return wrap(conn, source=SOURCE, tool="ticket_create_ntt", data=detail, ref=ntt_id, warnings=warnings)
 
     cursor = conn.execute(
@@ -491,11 +515,11 @@ def _evaluate_mcmc_eligibility(conn: sqlite3.Connection, row: sqlite3.Row) -> Mc
 
     if duration < MCMC_OUTAGE_THRESHOLD_MIN:
         reasons.append(
-            f"Outage duration is {duration} min (regulatory threshold is {MCMC_OUTAGE_THRESHOLD_MIN} min)"
+            f"Outage duration is {duration} min (demo threshold is {MCMC_OUTAGE_THRESHOLD_MIN} min)"
         )
 
     can_send = len(reasons) == 0
-    display_msg = "EMAILED TO MCMC" if can_send else "NOT ELIGIBLE"
+    display_msg = "ELIGIBLE (SIMULATED, NOTHING SENT)" if can_send else "NOT ELIGIBLE"
 
     is_closure_sent = bool(row["mcmc_closure_sent"])
     is_comp_req = bool(row["mcmc_comprehensive_required"])
@@ -559,8 +583,8 @@ def resolve_ntt(
                 row["ntt_id"],
                 stamp,
                 "system",
-                f"MCMC Notice: Auto-dispatched MCMC Closure Notification (Outage: {mcmc.outage_duration_min} min). "
-                f"MCMC Comprehensive Report due in {MCMC_COMPREHENSIVE_REPORT_DAYS} days.",
+                f"Simulated MCMC closure notice recorded (outage {mcmc.outage_duration_min} min; nothing was sent). "
+                f"Simulated comprehensive report due in {MCMC_COMPREHENSIVE_REPORT_DAYS} days.",
             ),
         )
         mcmc.is_mcmc_closure_sent = True

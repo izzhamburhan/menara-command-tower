@@ -103,7 +103,7 @@ def build_server(db_path: Path, *, host: str = "127.0.0.1", port: int = DEFAULT_
         return run(lambda conn: tools.resolve_ntt(conn, ntt_id, resolution_note, resolved_by))
 
     @mcp.tool(
-        description="Check MCMC regulatory email and comprehensive report eligibility for an NTT based on outage duration, severity, and root network element."
+        description="Check eligibility for a SIMULATED MCMC closure notice and report for an NTT (invented demo rules: outage duration, severity, fault type). Nothing is sent."
     )
     def ticket_check_mcmc(ntt_id: str) -> dict[str, Any]:
         return run(lambda conn: tools.check_mcmc(conn, ntt_id))

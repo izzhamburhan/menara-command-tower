@@ -50,12 +50,12 @@ uv run python -m menara_agent "Ticket TK-88213 just arrived. Find the cause and 
 
 ## The twenty-one MCP servers
 
-Port is for streamable HTTP; stdio (the default) needs none. 84 tools in total. Each server's full contract (arguments, response shapes, errors) is in `servers/<name>-mcp/README.md`.
+Port is for streamable HTTP; stdio (the default) needs none. 91 tools in total. Each server's full contract (arguments, response shapes, errors) is in `servers/<name>-mcp/README.md`.
 
 | Server | Port | What it is for | Tools | Writes |
 | --- | --- | --- | --- | --- |
 | `tower` | 8101 | Tower status, KPIs, alarms, neighbours; search by box or circle | `tower_get_status`, `tower_list_in_bbox`, `tower_list_in_radius`, `tower_get_kpi`, `tower_get_alarms` | nothing |
-| `ticket` | 8102 | Customer tickets, clustered by place | `ticket_get_ticket`, `ticket_cluster_by_location`, `ticket_add_note`, `ticket_resolve` | notes, resolutions |
+| `ticket` | 8102 | Customer tickets, clustered by place | `ticket_get_ticket`, `ticket_cluster_by_location`, `ticket_add_note`, `ticket_resolve`, and for network tickets `ticket_create_ntt`, `ticket_get_ntt`, `ticket_list_ntts`, `ticket_link_ctts`, `ticket_unlink_ctt`, `ticket_resolve_ntt`, `ticket_check_mcmc` | notes, resolutions, network tickets |
 | `user` | 8103 | Subscriber serving cell and experience; who is on a tower or in a circle; a subscriber's trail | `user_get_serving_cell`, `user_get_experience`, `user_list_in_area`, `user_list_on_tower`, `user_get_trail` | nothing |
 | `ontology` | 8104 | Linked objects: blast radius, neighbours, upstream dependencies, and the **Incident** | `ontology_blast_radius`, `ontology_neighbours`, `ontology_upstream_of`, `ontology_create_incident`, `ontology_get_incident`, `ontology_list_incidents`, `ontology_update_incident`, `ontology_add_incident_note` | incidents |
 | `weather` | 8105 | Rainfall and lightning near a point | `weather_get_rainfall`, `weather_get_lightning` | nothing |

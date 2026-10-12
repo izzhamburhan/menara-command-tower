@@ -1,8 +1,8 @@
 # Spec: NTT (Network Trouble Ticket) Support in ticket-mcp
 
 **Owner:** Akmal Izudin (TMRND)  
-**Status:** DRAFT (Awaiting Developer Approval)  
-**Related Systems:** TM iNTT (`/Users/akmalizudin/Developer/Code/INTT`)
+**Status:** Implemented; fixes after review applied (element check, simulated MCMC, dedupe warnings)  
+**Related Systems:** none (a synthetic stand-in for a network trouble ticket system)
 
 ---
 
@@ -23,15 +23,15 @@
 
 ## 2. Acceptance Criteria
 
-1. **AC-1 (Root NE Validation & NTT Creation):** Calling `ticket_create_ntt` with valid `network_element_id`, `fault_type`, `severity`, and `summary` creates an NTT in status `IN_PROGRESS` with generated ID (e.g. `NTT-0001`).
-2. **AC-2 (Duplicate NE Deduplication):** If an active NTT (`IN_PROGRESS`) already exists for the same `network_element_id`, calling `ticket_create_ntt` does NOT create a duplicate; it returns the existing NTT and links any newly supplied CTT IDs.
+1. **AC-1 (Root NE Validation & NTT Creation):** Calling `ticket_create_ntt` with a `network_element_id` that is a real tower (`enodeb_name`) or feeder id (otherwise `NotFoundError`), `fault_type`, `severity`, and `summary` creates an NTT in status `IN_PROGRESS` with generated ID (e.g. `NTT-0001`).
+2. **AC-2 (Duplicate NE Deduplication):** If an active NTT (`IN_PROGRESS`) already exists for the same `network_element_id`, calling `ticket_create_ntt` does NOT create a duplicate; it returns the existing NTT and links any newly supplied CTT IDs. A higher severity raises the existing NTT (with a note); a different fault type or lower severity is reported in `warnings`.
 3. **AC-3 (CTT Linking):** Calling `ticket_link_ctts` links one or more visible CTT IDs to an existing NTT. Linking updates `ctt_count` and prevents duplicate link rows.
 4. **AC-4 (CTT Unlinking):** Calling `ticket_unlink_ctt` removes the link between a CTT and an NTT.
 5. **AC-5 (NTT Retrieval & Listing):** `ticket_get_ntt` returns full details including root NE, fault type, severity, status, `ctt_count`, linked CTT IDs, notes, and resolution info. `ticket_list_ntts` supports filtering by `status` and `network_element_id`.
 6. **AC-6 (Cascading Resolution):** Calling `ticket_resolve_ntt` moves NTT to status `RESOLVED` and cascades resolution to all linked CTTs (inserting into `ticket_resolution` and `ticket_note`). Already resolved CTTs are safely skipped.
 7. **AC-7 (Input Validation):** Invalid `fault_type` (not in `POWER`, `FLOOD`, `FIBER`, `RAN`, `HARDWARE`, `OTHER`) or `severity` (not in `CRITICAL`, `MAJOR`, `MINOR`) raises `InvalidInputError`. Non-existent NTT or CTT raises `NotFoundError`. Resolving already-resolved NTT raises `InvalidInputError`.
 8. **AC-8 (Demo Reset Support):** `menara-core` reset clears all NTT rows (`ntt_ctt_link`, `ntt_note`, `ntt`) cleanly without violating foreign key constraints.
-9. **AC-9 (MCMC Regulatory Compliance & Auto-Reporting):** If an NTT outage duration is >= 120 minutes with service-impacting severity (`CRITICAL`/`MAJOR`), `ticket_check_mcmc` returns `can_send = True`. Resolving such an NTT auto-flags MCMC Closure Notification, records audit notice, and schedules MCMC Comprehensive Report due within 3 days.
+9. **AC-9 (Simulated MCMC notice; invented demo rules, nothing is sent):** If an NTT outage duration is >= 120 minutes with service-impacting severity (`CRITICAL`/`MAJOR`), `ticket_check_mcmc` returns `can_send = True` with `simulated = True`. Resolving such an NTT records a simulated closure notice (a note and two flags) and a comprehensive report due in 3 days. No message leaves the system.
 
 ---
 
@@ -85,6 +85,11 @@ All tools return `Envelope[T]` with `synthetic: true`.
 - **Data Model:** `NttResolution` (`ntt_id`, `status: "RESOLVED"`, `resolved_ctts: list[str]`, `resolution_note: str`, `resolved_by: str`)
 - **Errors:** `NotFoundError`, `InvalidInputError`.
 
+### 3.7 `ticket_check_mcmc`
+- **Arguments:** `ntt_id: str`
+- **Data Model:** `McmcEligibility` (`can_send`, `can_send_display_message`, `outage_duration_min`, `is_mcmc_closure_sent`, `is_mcmc_comprehensive_required`, `comprehensive_report_aging_days`, `reasons[]`, `simulated`, `note`)
+- **Errors:** `NotFoundError`.
+
 ---
 
 ## 4. Data & Ownership
@@ -113,7 +118,9 @@ CREATE TABLE ntt (
     resolved_min       INTEGER,
     resolved_at        TEXT,
     resolved_by        TEXT,
-    resolution_note    TEXT
+    resolution_note    TEXT,
+    mcmc_closure_sent            INTEGER NOT NULL DEFAULT 0,
+    mcmc_comprehensive_required  INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE ntt_ctt_link (

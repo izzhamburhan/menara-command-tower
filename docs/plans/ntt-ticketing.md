@@ -1,6 +1,7 @@
 # TDD Implementation Plan: NTT Support in ticket-mcp
 
-**Spec:** [docs/specs/ntt-ticketing.md](file:///Users/akmalizudin/Developer/Code/menara-command-tower/docs/specs/ntt-ticketing.md)  
+**Spec:** [docs/specs/ntt-ticketing.md](../specs/ntt-ticketing.md)  
+**Spec:** [docs/specs/ntt-ticketing.md](../specs/ntt-ticketing.md)  
 **Status:** DRAFT (Awaiting Developer Approval)
 
 ---
