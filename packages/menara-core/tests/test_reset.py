@@ -86,6 +86,12 @@ def dirty(db_file: Path) -> None:
             "INSERT INTO energy_action (action_id, enodeb_name, kind, from_min, to_min, kwh_saved, co2_kg_saved, approved_by, reason) "
             "VALUES ('ENA-0001', 'KKRI-0143', 'SLEEP', 1200, 1560, 3.0, 1.75, 'human', 'r')"
         )
+        conn.execute(
+            "INSERT INTO ntt (ntt_id, created_min, created_at, network_element_id, fault_type, severity, status, summary) "
+            "VALUES ('NTT-0001', 12, ?, 'KKRI-0142', 'POWER', 'CRITICAL', 'IN_PROGRESS', 'Power failure')", (AT,)
+        )
+        conn.execute("INSERT INTO ntt_ctt_link VALUES ('NTT-0001', ?, 12, ?)", (ticket, AT))
+        conn.execute("INSERT INTO ntt_note (ntt_id, at, author, text) VALUES ('NTT-0001', ?, 'agent', 'n')", (AT,))
         conn.execute("UPDATE policy_setting SET value = '1' WHERE key = 'kill_switch'")
         conn.execute("UPDATE policy_setting SET value = '999' WHERE key = 'auto_allow_max_subscribers'")
         conn.commit()
@@ -131,7 +137,9 @@ def test_reset_clears_every_runtime_table_and_reports_the_counts(played: Path, s
 def test_the_runtime_tables_are_exactly_the_ones_servers_write(played: Path) -> None:
     assert set(RUNTIME_TABLES) == {
         "incident", "incident_ticket", "twin_simulation", "ran_change", "ran_change_item", "ran_kpi_effect",
-        "drone_mission", "approval", "audit_log", "ticket_note", "ticket_resolution", "energy_action", "care_notice", "sla_credit", "qod_booking", "field_job",
+        "drone_mission", "approval", "audit_log", "ticket_note", "ticket_resolution",
+        "energy_action", "care_notice", "sla_credit", "qod_booking", "field_job",
+        "ntt", "ntt_ctt_link", "ntt_note",
     }
 
 

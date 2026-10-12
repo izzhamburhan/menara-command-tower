@@ -15,18 +15,34 @@ from ticket_mcp.models import (
     Centroid,
     ClusterTicket,
     LocationCount,
+    McmcEligibility,
     Note,
     NoteAdded,
+    NttDetail,
+    NttLinkResult,
+    NttList,
+    NttResolution,
+    NttSummary,
+    NttUnlinkResult,
     Resolution,
     TicketCluster,
     TicketDetail,
 )
 
 SOURCE = "ticket-mcp"
-OWNED_TABLES = frozenset({"ticket_note", "ticket_resolution"})
+OWNED_TABLES = frozenset({"ticket_note", "ticket_resolution", "ntt", "ntt_ctt_link", "ntt_note"})
 MAX_NOTE_CHARS = 1000
 MAX_LIMIT = 500
 MAX_RESOLVE = 200
+MAX_NTT_SUMMARY_CHARS = 500
+VALID_FAULT_TYPES = frozenset({"POWER", "FLOOD", "FIBER", "RAN", "HARDWARE", "OTHER"})
+VALID_SEVERITIES = frozenset({"CRITICAL", "MAJOR", "MINOR"})
+VALID_NTT_STATUSES = frozenset({"IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELLED"})
+
+MCMC_OUTAGE_THRESHOLD_MIN = 120  # Regulatory threshold: 2 hours
+MCMC_COMPREHENSIVE_REPORT_DAYS = 3
+MCMC_SERVICE_IMPACTING_SEVERITIES = frozenset({"CRITICAL", "MAJOR"})
+MCMC_SERVICE_IMPACTING_FAULTS = frozenset({"POWER", "FLOOD", "FIBER", "RAN", "HARDWARE"})
 
 
 def _visible_ticket(conn: sqlite3.Connection, ticket_id: str) -> sqlite3.Row:
@@ -225,4 +241,359 @@ def resolve(
         tool="ticket_resolve",
         data=Resolution(resolved=done, already_resolved=skipped, count=len(done), resolved_by=who),
         ref=ids[0] if len(ids) == 1 else None,
+    )
+
+
+def _format_ntt_id(seq: int) -> str:
+    return f"NTT-{seq:04d}"
+
+
+def _get_ntt_row(conn: sqlite3.Connection, ntt_id: str) -> sqlite3.Row:
+    clean_id = ntt_id.strip().upper()
+    row: sqlite3.Row | None = conn.execute("SELECT * FROM ntt WHERE ntt_id = ?", (clean_id,)).fetchone()
+    if row is None:
+        raise NotFoundError(f"NTT {clean_id} not found")
+    return row
+
+
+def _linked_ctt_ids(conn: sqlite3.Connection, ntt_id: str) -> list[str]:
+    rows = conn.execute(
+        "SELECT ticket_id FROM ntt_ctt_link WHERE ntt_id = ? ORDER BY linked_min, ticket_id",
+        (ntt_id,),
+    ).fetchall()
+    return [r["ticket_id"] for r in rows]
+
+
+def _ntt_notes(conn: sqlite3.Connection, ntt_id: str) -> list[Note]:
+    rows = conn.execute("SELECT * FROM ntt_note WHERE ntt_id = ? ORDER BY note_id", (ntt_id,)).fetchall()
+    return [_note(r) for r in rows]
+
+
+def _build_ntt_detail(conn: sqlite3.Connection, row: sqlite3.Row) -> NttDetail:
+    linked = _linked_ctt_ids(conn, row["ntt_id"])
+    notes = _ntt_notes(conn, row["ntt_id"])
+    return NttDetail(
+        ntt_id=row["ntt_id"],
+        created_at=row["created_at"],
+        network_element_id=row["network_element_id"],
+        fault_type=row["fault_type"],
+        severity=row["severity"],
+        status=row["status"],
+        summary=row["summary"],
+        ctt_count=len(linked),
+        linked_ctt_ids=linked,
+        notes=notes,
+        resolved_at=row["resolved_at"],
+        resolved_by=row["resolved_by"],
+        resolution_note=row["resolution_note"],
+        mcmc_closure_sent=bool(row["mcmc_closure_sent"]),
+        mcmc_comprehensive_required=bool(row["mcmc_comprehensive_required"]),
+    )
+
+
+def create_ntt(
+    conn: sqlite3.Connection,
+    network_element_id: str,
+    fault_type: str,
+    severity: str,
+    summary: str,
+    ctt_ticket_ids: list[str] | None = None,
+) -> Envelope[NttDetail]:
+    ne_id = network_element_id.strip().upper()
+    if not ne_id or len(ne_id) > 60:
+        raise InvalidInputError("network_element_id must be 1-60 characters")
+    ft = fault_type.strip().upper()
+    if ft not in VALID_FAULT_TYPES:
+        raise InvalidInputError(f"fault_type must be one of {sorted(VALID_FAULT_TYPES)}")
+    sev = severity.strip().upper()
+    if sev not in VALID_SEVERITIES:
+        raise InvalidInputError(f"severity must be one of {sorted(VALID_SEVERITIES)}")
+    summ = summary.strip()
+    if len(summ) < 5 or len(summ) > MAX_NTT_SUMMARY_CHARS:
+        raise InvalidInputError(f"summary must be 5-{MAX_NTT_SUMMARY_CHARS} characters")
+
+    ctts_to_link: list[str] = []
+    if ctt_ticket_ids:
+        for tid in ctt_ticket_ids:
+            row = _visible_ticket(conn, tid)
+            ctts_to_link.append(row["ticket_id"])
+
+    now, stamp = clock.now_min(conn), clock.as_of(conn)
+
+    existing = conn.execute(
+        "SELECT * FROM ntt WHERE network_element_id = ? AND status = 'IN_PROGRESS' ORDER BY seq DESC LIMIT 1",
+        (ne_id,),
+    ).fetchone()
+
+    warnings: list[str] = []
+    if existing is not None:
+        ntt_id = existing["ntt_id"]
+        warnings.append(f"Existing active NTT {ntt_id} for {ne_id} was reused.")
+        for tid in ctts_to_link:
+            conn.execute(
+                "INSERT OR IGNORE INTO ntt_ctt_link VALUES (?, ?, ?, ?)",
+                (ntt_id, tid, now, stamp),
+            )
+        conn.commit()
+        detail = _build_ntt_detail(conn, existing)
+        return wrap(conn, source=SOURCE, tool="ticket_create_ntt", data=detail, ref=ntt_id, warnings=warnings)
+
+    cursor = conn.execute(
+        "INSERT INTO ntt (created_min, created_at, network_element_id, fault_type, severity, status, summary) "
+        "VALUES (?, ?, ?, ?, ?, 'IN_PROGRESS', ?)",
+        (now, stamp, ne_id, ft, sev, summ),
+    )
+    seq = int(cursor.lastrowid or 0)
+    ntt_id = _format_ntt_id(seq)
+    conn.execute("UPDATE ntt SET ntt_id = ? WHERE seq = ?", (ntt_id, seq))
+
+    for tid in ctts_to_link:
+        conn.execute(
+            "INSERT OR IGNORE INTO ntt_ctt_link VALUES (?, ?, ?, ?)",
+            (ntt_id, tid, now, stamp),
+        )
+    conn.commit()
+
+    created_row = conn.execute("SELECT * FROM ntt WHERE seq = ?", (seq,)).fetchone()
+    detail = _build_ntt_detail(conn, created_row)
+    return wrap(conn, source=SOURCE, tool="ticket_create_ntt", data=detail, ref=ntt_id)
+
+
+def get_ntt(conn: sqlite3.Connection, ntt_id: str) -> Envelope[NttDetail]:
+    row = _get_ntt_row(conn, ntt_id)
+    detail = _build_ntt_detail(conn, row)
+    return wrap(conn, source=SOURCE, tool="ticket_get_ntt", data=detail, ref=row["ntt_id"])
+
+
+def list_ntts(
+    conn: sqlite3.Connection,
+    status: str | None = None,
+    network_element_id: str | None = None,
+    limit: int = 50,
+) -> Envelope[NttList]:
+    if not 1 <= limit <= 200:
+        raise InvalidInputError("limit must be between 1 and 200")
+    stat = status.strip().upper() if status else None
+    if stat and stat not in VALID_NTT_STATUSES:
+        raise InvalidInputError(f"status must be one of {sorted(VALID_NTT_STATUSES)}")
+    ne_id = network_element_id.strip().upper() if network_element_id else None
+
+    clauses: list[str] = []
+    params: list[object] = []
+    if stat:
+        clauses.append("status = ?")
+        params.append(stat)
+    if ne_id:
+        clauses.append("network_element_id = ?")
+        params.append(ne_id)
+
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    rows = conn.execute(f"SELECT * FROM ntt {where} ORDER BY seq DESC", params).fetchall()
+
+    items: list[NttSummary] = []
+    for r in rows[:limit]:
+        ctt_count = conn.execute("SELECT COUNT(*) FROM ntt_ctt_link WHERE ntt_id = ?", (r["ntt_id"],)).fetchone()[0]
+        items.append(
+            NttSummary(
+                ntt_id=r["ntt_id"],
+                created_at=r["created_at"],
+                network_element_id=r["network_element_id"],
+                fault_type=r["fault_type"],
+                severity=r["severity"],
+                status=r["status"],
+                summary=r["summary"],
+                ctt_count=int(ctt_count),
+            )
+        )
+    result = NttList(ntts=items, total=len(rows), truncated=len(rows) > limit)
+    warnings = [f"Showing {limit} of {len(rows)} NTTs"] if result.truncated else []
+    return wrap(conn, source=SOURCE, tool="ticket_list_ntts", data=result, warnings=warnings)
+
+
+def link_ctts(
+    conn: sqlite3.Connection,
+    ntt_id: str,
+    ctt_ticket_ids: list[str],
+) -> Envelope[NttLinkResult]:
+    row = _get_ntt_row(conn, ntt_id)
+    if not ctt_ticket_ids:
+        raise InvalidInputError("ctt_ticket_ids must not be empty")
+    if len(ctt_ticket_ids) > 200:
+        raise InvalidInputError("At most 200 CTTs per call")
+
+    tids = [parse_ticket_id(t) for t in ctt_ticket_ids]
+    now, stamp = clock.now_min(conn), clock.as_of(conn)
+
+    linked: list[str] = []
+    already: list[str] = []
+    for tid in tids:
+        _visible_ticket(conn, tid)
+        exists = conn.execute(
+            "SELECT 1 FROM ntt_ctt_link WHERE ntt_id = ? AND ticket_id = ?",
+            (row["ntt_id"], tid),
+        ).fetchone()
+        if exists:
+            already.append(tid)
+        else:
+            conn.execute("INSERT INTO ntt_ctt_link VALUES (?, ?, ?, ?)", (row["ntt_id"], tid, now, stamp))
+            linked.append(tid)
+    conn.commit()
+    total = conn.execute("SELECT COUNT(*) FROM ntt_ctt_link WHERE ntt_id = ?", (row["ntt_id"],)).fetchone()[0]
+    return wrap(
+        conn,
+        source=SOURCE,
+        tool="ticket_link_ctts",
+        data=NttLinkResult(ntt_id=row["ntt_id"], linked=linked, already_linked=already, ctt_count=int(total)),
+        ref=row["ntt_id"],
+    )
+
+
+def unlink_ctt(
+    conn: sqlite3.Connection,
+    ntt_id: str,
+    ctt_ticket_id: str,
+) -> Envelope[NttUnlinkResult]:
+    row = _get_ntt_row(conn, ntt_id)
+    tid = parse_ticket_id(ctt_ticket_id)
+    deleted = conn.execute(
+        "DELETE FROM ntt_ctt_link WHERE ntt_id = ? AND ticket_id = ?",
+        (row["ntt_id"], tid),
+    ).rowcount
+    if deleted == 0:
+        raise NotFoundError(f"CTT {tid} is not linked to NTT {row['ntt_id']}")
+    conn.commit()
+    total = conn.execute("SELECT COUNT(*) FROM ntt_ctt_link WHERE ntt_id = ?", (row["ntt_id"],)).fetchone()[0]
+    return wrap(
+        conn,
+        source=SOURCE,
+        tool="ticket_unlink_ctt",
+        data=NttUnlinkResult(ntt_id=row["ntt_id"], unlinked_ticket_id=tid, ctt_count=int(total)),
+        ref=row["ntt_id"],
+    )
+
+
+def _evaluate_mcmc_eligibility(conn: sqlite3.Connection, row: sqlite3.Row) -> McmcEligibility:
+    created_min = int(row["created_min"])
+    resolved_min = int(row["resolved_min"]) if row["resolved_min"] is not None else None
+    current_min = clock.now_min(conn)
+
+    duration = (resolved_min - created_min) if resolved_min is not None else (current_min - created_min)
+    duration = max(0, duration)
+
+    reasons: list[str] = []
+    sev = str(row["severity"])
+    if sev not in MCMC_SERVICE_IMPACTING_SEVERITIES:
+        reasons.append(f"Severity is {sev} (must be CRITICAL or MAJOR)")
+
+    ft = str(row["fault_type"])
+    if ft not in MCMC_SERVICE_IMPACTING_FAULTS:
+        reasons.append(f"Fault type {ft} is non-service impacting")
+
+    if duration < MCMC_OUTAGE_THRESHOLD_MIN:
+        reasons.append(
+            f"Outage duration is {duration} min (regulatory threshold is {MCMC_OUTAGE_THRESHOLD_MIN} min)"
+        )
+
+    can_send = len(reasons) == 0
+    display_msg = "EMAILED TO MCMC" if can_send else "NOT ELIGIBLE"
+
+    is_closure_sent = bool(row["mcmc_closure_sent"])
+    is_comp_req = bool(row["mcmc_comprehensive_required"])
+    comp_aging_days = MCMC_COMPREHENSIVE_REPORT_DAYS if (can_send or is_comp_req) else None
+
+    return McmcEligibility(
+        can_send=can_send,
+        can_send_display_message=display_msg,
+        outage_duration_min=duration,
+        is_mcmc_closure_sent=is_closure_sent,
+        is_mcmc_comprehensive_required=is_comp_req,
+        comprehensive_report_aging_days=comp_aging_days,
+        reasons=reasons,
+    )
+
+
+def check_mcmc(conn: sqlite3.Connection, ntt_id: str) -> Envelope[McmcEligibility]:
+    row = _get_ntt_row(conn, ntt_id)
+    eligibility = _evaluate_mcmc_eligibility(conn, row)
+    return wrap(conn, source=SOURCE, tool="ticket_check_mcmc", data=eligibility, ref=row["ntt_id"])
+
+
+def resolve_ntt(
+    conn: sqlite3.Connection,
+    ntt_id: str,
+    resolution_note: str,
+    resolved_by: str = "agent",
+) -> Envelope[NttResolution]:
+    row = _get_ntt_row(conn, ntt_id)
+    if row["status"] in {"RESOLVED", "CLOSED", "CANCELLED"}:
+        raise InvalidInputError(f"NTT {row['ntt_id']} is already {row['status']}")
+
+    note_text, who = resolution_note.strip(), resolved_by.strip()
+    if not note_text or len(note_text) > MAX_NOTE_CHARS:
+        raise InvalidInputError(f"resolution_note must be 1-{MAX_NOTE_CHARS} characters")
+    if not who or len(who) > 60:
+        raise InvalidInputError("resolved_by must be 1-60 characters")
+
+    now, stamp = clock.now_min(conn), clock.as_of(conn)
+
+    conn.execute(
+        "UPDATE ntt SET status = 'RESOLVED', resolved_min = ?, resolved_at = ?, resolved_by = ?, resolution_note = ? WHERE ntt_id = ?",
+        (now, stamp, who, note_text, row["ntt_id"]),
+    )
+    conn.execute(
+        "INSERT INTO ntt_note (ntt_id, at, author, text) VALUES (?, ?, ?, ?)",
+        (row["ntt_id"], stamp, who, f"Resolved: {note_text}"),
+    )
+
+    updated_row = _get_ntt_row(conn, ntt_id)
+    mcmc = _evaluate_mcmc_eligibility(conn, updated_row)
+
+    if mcmc.can_send:
+        conn.execute(
+            "UPDATE ntt SET mcmc_closure_sent = 1, mcmc_comprehensive_required = 1 WHERE ntt_id = ?",
+            (row["ntt_id"],),
+        )
+        conn.execute(
+            "INSERT INTO ntt_note (ntt_id, at, author, text) VALUES (?, ?, ?, ?)",
+            (
+                row["ntt_id"],
+                stamp,
+                "system",
+                f"MCMC Notice: Auto-dispatched MCMC Closure Notification (Outage: {mcmc.outage_duration_min} min). "
+                f"MCMC Comprehensive Report due in {MCMC_COMPREHENSIVE_REPORT_DAYS} days.",
+            ),
+        )
+        mcmc.is_mcmc_closure_sent = True
+        mcmc.is_mcmc_comprehensive_required = True
+        mcmc.comprehensive_report_aging_days = MCMC_COMPREHENSIVE_REPORT_DAYS
+
+    linked = _linked_ctt_ids(conn, row["ntt_id"])
+    resolved_ctts: list[str] = []
+    for tid in linked:
+        ctt_row = conn.execute("SELECT * FROM ticket WHERE ticket_id = ?", (tid,)).fetchone()
+        if ctt_row and _effective_status(conn, ctt_row) != "RESOLVED":
+            conn.execute(
+                "INSERT OR REPLACE INTO ticket_resolution VALUES (?, ?, ?, ?, ?)",
+                (tid, now, stamp, who, f"Resolved via NTT {row['ntt_id']}: {note_text}"),
+            )
+            conn.execute(
+                "INSERT INTO ticket_note (ticket_id, at, author, text) VALUES (?, ?, ?, ?)",
+                (tid, stamp, who, f"Resolved via NTT {row['ntt_id']}: {note_text}"),
+            )
+            resolved_ctts.append(tid)
+
+    conn.commit()
+    return wrap(
+        conn,
+        source=SOURCE,
+        tool="ticket_resolve_ntt",
+        data=NttResolution(
+            ntt_id=row["ntt_id"],
+            status="RESOLVED",
+            resolved_ctts=resolved_ctts,
+            resolution_note=note_text,
+            resolved_by=who,
+            mcmc=mcmc,
+        ),
+        ref=row["ntt_id"],
     )

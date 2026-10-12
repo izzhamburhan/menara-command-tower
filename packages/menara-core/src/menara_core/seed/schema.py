@@ -149,6 +149,41 @@ CREATE TABLE ticket_note (
     text      TEXT NOT NULL
 );
 
+-- owned by ticket-mcp: Network Trouble Tickets (NTT) for infrastructure elements
+CREATE TABLE ntt (
+    seq                INTEGER PRIMARY KEY AUTOINCREMENT,
+    ntt_id             TEXT UNIQUE,
+    created_min        INTEGER NOT NULL,
+    created_at         TEXT NOT NULL,
+    network_element_id TEXT NOT NULL,
+    fault_type         TEXT NOT NULL CHECK (fault_type IN ('POWER', 'FLOOD', 'FIBER', 'RAN', 'HARDWARE', 'OTHER')),
+    severity           TEXT NOT NULL CHECK (severity IN ('CRITICAL', 'MAJOR', 'MINOR')),
+    status             TEXT NOT NULL CHECK (status IN ('IN_PROGRESS', 'RESOLVED', 'CLOSED', 'CANCELLED')),
+    summary            TEXT NOT NULL,
+    resolved_min                 INTEGER,
+    resolved_at                  TEXT,
+    resolved_by                  TEXT,
+    resolution_note              TEXT,
+    mcmc_closure_sent            INTEGER NOT NULL DEFAULT 0,
+    mcmc_comprehensive_required  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE ntt_ctt_link (
+    ntt_id     TEXT NOT NULL REFERENCES ntt (ntt_id),
+    ticket_id  TEXT NOT NULL REFERENCES ticket (ticket_id),
+    linked_min INTEGER NOT NULL,
+    linked_at  TEXT NOT NULL,
+    PRIMARY KEY (ntt_id, ticket_id)
+);
+
+CREATE TABLE ntt_note (
+    note_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    ntt_id    TEXT NOT NULL REFERENCES ntt (ntt_id),
+    at        TEXT NOT NULL,
+    author    TEXT NOT NULL,
+    text      TEXT NOT NULL
+);
+
 -- base (seed only): weather domain, served by weather-mcp
 CREATE TABLE weather_station (
     station_id TEXT PRIMARY KEY,
