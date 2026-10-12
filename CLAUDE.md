@@ -75,7 +75,7 @@ The folder is `servers/`, not `mcp/`: pytest's importlib mode turns a folder nam
 | MCP | State |
 | --- | --- |
 | tower-mcp | done, 5 tools (box and radius search), tests, strict typing |
-| ticket-mcp | done, 4 tools (owns `ticket_note`, `ticket_resolution`), tests |
+| ticket-mcp | done, 11 tools (owns `ticket_note`, `ticket_resolution`, `ntt`, `ntt_ctt_link`, `ntt_note`; customer tickets plus Network Trouble Tickets with a simulated MCMC notice), tests |
 | user-mcp | done, 5 tools (area lists, trails up to 4 weeks), PII masked, tests |
 | weather-mcp | done, 2 tools, tests |
 | grid-mcp | done, 3 tools, tests |
@@ -132,7 +132,7 @@ Prefer `python -m ...` over console scripts: some Windows machines block `.venv`
 ## Rules every MCP follows
 
 1. **Separate server.** Depends only on `menara-core`. No MCP calls another MCP; the agent orchestrates.
-2. **Own tables only.** Everyone reads `data/menara.db`; each MCP writes only the tables it owns. `menara_core.db.connect(path, owned_tables=...)` enforces it with a SQLite authorizer. No owned tables means a read-only connection. Cross-domain reads of tables another domain owns are read-only and limited: `ontology-mcp`, `twin-mcp` and `policy-mcp` read base tables to compute impact themselves; `ran-mcp` reads `cell` and `tower`; `drone-mcp` reads `tower`; `user-mcp` reads `tower_subscribers` for the population estimate; `tower-mcp` and `ontology-mcp` apply `ran_kpi_effect` through `menara_core.kpi_overlay`. Each server's README says what it reads. The eight track servers (energy, care, enterprise, exposure, field, events, sensors, scam) read base tables read-only and write only their own runtime table (`energy_action`, `care_notice`, `sla_credit`, `qod_booking`, `field_job`; events, sensors and scam write nothing); `events-mcp` and `exposure-mcp` share one crowd model (`menara_core.crowd`).
+2. **Own tables only.** Everyone reads `data/menara.db`; each MCP writes only the tables it owns. `menara_core.db.connect(path, owned_tables=...)` enforces it with a SQLite authorizer. No owned tables means a read-only connection. Cross-domain reads of tables another domain owns are read-only and limited: `ontology-mcp`, `twin-mcp` and `policy-mcp` read base tables to compute impact themselves; `ran-mcp` reads `cell` and `tower`; `drone-mcp` reads `tower`; `user-mcp` reads `tower_subscribers` for the population estimate; `ticket-mcp` reads `tower` and `grid_feeder` to check a network element; `tower-mcp` and `ontology-mcp` apply `ran_kpi_effect` through `menara_core.kpi_overlay`. Each server's README says what it reads. The eight track servers (energy, care, enterprise, exposure, field, events, sensors, scam) read base tables read-only and write only their own runtime table (`energy_action`, `care_notice`, `sla_credit`, `qod_booking`, `field_job`; events, sensors and scam write nothing); `events-mcp` and `exposure-mcp` share one crowd model (`menara_core.crowd`).
 3. **Envelope.** Every tool returns `Envelope` with `synthetic: true` and `evidence[]`.
 4. **Domain-prefixed tool names** (`tower_get_status`).
 5. **Tests first, strict typing.** pytest, ruff, mypy strict. Tool logic lives in `tools.py` as plain functions; `server.py` only registers them.

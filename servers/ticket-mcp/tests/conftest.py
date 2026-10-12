@@ -22,6 +22,9 @@ def conn(db_file: Path) -> Iterator[sqlite3.Connection]:
     yield connection
     connection.execute("DELETE FROM ticket_resolution")
     connection.execute("DELETE FROM ticket_note")
+    connection.execute("DELETE FROM ntt_ctt_link")
+    connection.execute("DELETE FROM ntt_note")
+    connection.execute("DELETE FROM ntt")
     connection.commit()
     connection.close()
 
